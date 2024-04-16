@@ -9,7 +9,7 @@ class Macro:
     IsObjectLike: bool
     IsDefLocValid: bool
     DefLocOrError: str
-    ## EndDefLoc: str
+    EndDefLoc: str
 
     def defined_in(self, dir: str):
         '''Returns true if the macro was defined in the given dir'''
