@@ -103,14 +103,21 @@ def main():
     src_dir = ''
 
 
-    ## TODO: read the new json output
+    # We need this because invocations don't have all the information necessary
+    # to construct a macro to use as a key in the macro map (pd.mm)
+    # NOTE: Currently ignores macros without FileEntry data (i.e compiler built-ins)
+    macroDefinitionLocationToMacroObject: dict[str, Macro] = {}
+
     for entry in entries:
         print(entry)
-        if entry["Kind"] == "Define":
+        if entry["Kind"] == "Definition":
             m = Macro(entry["Name"], entry["IsObjectLike"],
                     entry["IsDefinitionLocationValid"], entry["Body"], entry["DefinitionLocation"], entry["EndDefinitionLocation"])
             if m not in pd.mm:
                 pd.mm[m] = set()
+            if m.IsDefinitionLocationValid: 
+                macroDefinitionLocationToMacroObject[entry["DefinitionLocation"]] = m
+
         elif entry["Kind"] == 'InspectedByCPP':
             pd.inspected_macro_names.add(entry["Name"])
         elif entry["Kind"] == "Include":
@@ -119,14 +126,12 @@ def main():
         elif entry["Kind"] == 'Invocation':
             del entry["Kind"]
             i = Invocation(**entry)
-            m = Macro(i.Name,
-                    i.IsObjectLike,
-                    i.IsDefinitionLocationValid,
-                    i.DefinitionLocation)
-            # Only record unique invocations - two invocations may have the same
-            # location if they are the same nested invocation
-            if all([j.InvocationLocation != i.InvocationLocation for j in pd.mm[m]]):
-                pd.mm[m].add(i)
+            if i.IsDefinitionLocationValid: 
+                m = macroDefinitionLocationToMacroObject[i.DefinitionLocation]
+                # Only record unique invocations - two invocations may have the same
+                # location if they are the same nested invocation
+                if all([j.InvocationLocation != i.InvocationLocation for j in pd.mm[m]]):
+                    pd.mm[m].add(i)
 
     # src_pd only records preprocessor data about source macros
     src_pd = PreprocessorData(
@@ -144,22 +149,6 @@ def main():
         src_pd.local_includes
     )
 
-    # # # Programs I don't have examples of yet:
-    # # # cvs, enscript, flex, m4, perl, rcs
-
-    # from pprint import pprint
-    # for m, is_ in tlna_src_pd.mm.items():
-    #     for i in is_:
-    #         # if i.DoesAnyArgumentHaveSideEffects:
-    #         # if csca_invocation(i, tlna_src_pd):
-    #         # if i.IsAnyArgumentExpandedWhereAddressableValueRequired:
-    #         # if i.IsExpansionTypeLocalType or i.IsAnyArgumentTypeLocalType:
-    #         # if i.IsAnyArgumentTypeVoid:
-    #         if i.ASTKind == 'Decl':
-    #             pprint(i)
-    # return
-
-
     # ie_pd only records preprocessor data about interface-equivalent
     # macros
     ie_pd = PreprocessorData(
@@ -168,58 +157,6 @@ def main():
         tlna_src_pd.inspected_macro_names,
         tlna_src_pd.local_includes
     )
-
-    ie_invocations = set(chain(*ie_pd.mm.values()))
-
-  
-    a = Analysis(
-        defined_macros=definition_stat(pd, lambda _m, _pd: True),
-        macros_defined_at_valid_src_locs=definition_stat(
-            src_pd, lambda m, _pd: True),
-        macros_defined_at_valid_src_locs_with_only_top_level_non_argument_invocations=definition_stat(
-            tlna_src_pd, lambda m, _pd: True),
-
-        # Can just return true because we only record invocations at unique
-        # locations anyway
-        src_invocations_at_unique_locations=invocation_stat(
-            src_pd, lambda _i, _pd: True),
-        src_invocations_at_unique_valid_locations=invocation_stat(
-            src_pd, lambda i, _pd: i.IsInvocationLocationValid),
-        src_invocations_at_unique_invalid_locations=invocation_stat(
-            src_pd, lambda i, _pd: not i.IsInvocationLocationValid),
-
-        nested_argument_src_invocations=invocation_stat(
-            src_pd,
-            lambda i, _pd: i.InvocationDepth > 0 and i.IsInvokedInMacroArgument),
-        nested_non_argument_src_invocations=invocation_stat(
-            src_pd,
-            lambda i, _pd: i.InvocationDepth > 0 and not i.IsInvokedInMacroArgument),
-        top_level_argument_src_invocations=invocation_stat(
-            src_pd,
-            lambda i, _pd: i.InvocationDepth == 0 and i.IsInvokedInMacroArgument),
-        top_level_non_argument_src_invocations=invocation_stat(
-            tlna_src_pd, lambda i, _pd: True),
-
-        top_level_non_argument_src_invocations_with_semantic_data=invocation_stat(
-            tlna_src_pd, lambda i, _pd: i.HasSemanticData),
-
-        interface_equivalent_src_definitions=definition_stat(
-            ie_pd, lambda _m, ie_pd: True),
-        # We have to compute the invocation stat for
-        # interface-equivalent macro invocations somewhat differently
-        # from the rest because in order for an invocation to truly
-        # be interface-equivalent, all its definition's corresponding
-        # invocations must be interface-equivalent as well
-        top_level_non_argument_interface_equivalent_src_invocations=invocation_stat(
-            ie_pd, lambda _m, _pd: True),
-
-    )
-
-    if args.output_file:
-        with open(args.output_file, 'w', encoding='utf-8') as ofp:
-            json.dump(asdict(a), ofp, indent=4)
-    else:
-        json.dump(asdict(a), sys.stdout, indent=4)
 
 
 if __name__ == '__main__':
