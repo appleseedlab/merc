@@ -8,8 +8,10 @@ class Macro:
     Name: str
     IsObjectLike: bool
     IsDefLocValid: bool
+    Body: str
     DefLocOrError: str
-    EndDefLoc: str
+    EndDefinitionLocation: str
+    # EndDefLoc: str
 
     def defined_in(self, dir: str):
         '''Returns true if the macro was defined in the given dir'''
@@ -24,7 +26,6 @@ class Macro:
 class Invocation:
     Name: str
     DefinitionLocation: str
-    EndDefinitionLocation: str
     InvocationLocation: str
     ASTKind: Literal['Decl', 'Stmt', 'TypeLoc', 'Expr']
     TypeSignature: str
