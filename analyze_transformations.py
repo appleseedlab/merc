@@ -2,33 +2,18 @@
 
 import argparse
 import json
-import sys
-from dataclasses import asdict
-from itertools import chain
 from typing import Callable, List, Set
 
-from analysis import Analysis, MacroStat, definition_stat, invocation_stat
 from macros import Invocation, Macro, PreprocessorData
 from predicates.argument_altering import aa_invocation
 from predicates.call_site_context_altering import csca_invocation
 from predicates.declaration_altering import da_invocation
 from predicates.interface_equivalent import ie_def
-from predicates.mennie import mennie_def
 from predicates.metaprogramming import mp_invocation
 from predicates.thunkizing import thunkizing_invocation
 from predicates.property_categories import *
 
-ANALYSES_DIR = r'ANALYSES'
-DELIM = '\t'
-
-
-TRANSFORMATIONS = [aa_invocation, da_invocation,
-                   csca_invocation, mp_invocation,
-                   thunkizing_invocation]
-
-
 InvocationPredicate = Callable[[Invocation, PreprocessorData], bool]
-
 
 def only(i: Invocation,
          pd: PreprocessorData,
@@ -41,28 +26,6 @@ def only(i: Invocation,
     assert p in ps
     satisfied = [p for p in ps if p(i, pd)]
     return satisfied == [p]
-
-
-def mdefs_only_p(pd: PreprocessorData,
-                 p: InvocationPredicate,
-                 ps: List[InvocationPredicate]):
-    return definition_stat(
-        pd,
-        lambda m, pd: all([only(i, pd, p, ps) for i in pd.mm[m]]))
-
-
-def mdefs_at_least_p(pd, p):
-    return definition_stat(pd,
-                           lambda m, pd: any([p(i, pd) for i in pd.mm[m]]))
-
-
-def invocations_only_p(pd, p, ps):
-    return invocation_stat(pd, lambda i, pd_: only(i, pd_, p, ps))
-
-
-def invocations_at_least_p(pd, p):
-    return invocation_stat(pd, p)
-
 
 def easy_to_transform_invocation(i: Invocation,
                                  pd: PreprocessorData,
@@ -83,17 +46,12 @@ def easy_to_transform_definition(m: Macro,
     ])
 
 
-def avg_or_zero(values):
-    return round(sum(values) / len(values), 2) if values else 0
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('results_file', type=str)
     ap.add_argument('-o', '--output_file')
     args = ap.parse_args()
 
-    lines: list[str] = []
     with open(args.results_file) as fp:
         entries = json.load(fp)
 
