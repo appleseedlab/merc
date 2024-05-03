@@ -4,7 +4,7 @@ import argparse
 import json
 from typing import Callable, List, Set
 
-from macros import Invocation, Macro, PreprocessorData
+from macros import Invocation, Macro, MacroMap, PreprocessorData
 from predicates.argument_altering import aa_invocation
 from predicates.call_site_context_altering import csca_invocation
 from predicates.declaration_altering import da_invocation
@@ -44,6 +44,24 @@ def easy_to_transform_definition(m: Macro,
         easy_to_transform_invocation(i, pd, ie_invocations)
         for i in pd.mm[m]
     ])
+
+
+def generate_macro_translations(mm: MacroMap) -> dict[Macro, str]:
+    translationMap: dict[Macro, str] = {}
+
+    for macro, invocations in mm.items():
+        # We only need to look at the first invocation to determine the translation
+        # Already verified that all type signatures are the same
+        invocation = next(iter(invocations), None)
+        assert invocation is not None
+
+        if macro.IsFunctionLike:
+            translationMap[macro] = f"{invocation.TypeSignature} {{ return {macro.Body} }};" 
+        # For now just make it a variable. Consider anonymous enum in the future
+        elif macro.IsObjectLike:
+            translationMap[macro] = f"{invocation.TypeSignature} = {macro.Body};" 
+
+    return translationMap
 
 
 def main():
