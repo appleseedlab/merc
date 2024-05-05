@@ -64,14 +64,13 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str]:
     return translationMap
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('results_file', type=str)
-    ap.add_argument('-o', '--output_file')
-    args = ap.parse_args()
-
-    with open(args.results_file) as fp:
-        entries = json.load(fp)
+def get_interface_equivalent_preprocessordata(results_file: str) -> PreprocessorData:
+    try:
+        with open(results_file) as fp:
+            entries = json.load(fp)
+    except Exception as e:
+        print(f"Error reading file {results_file}: {e}")
+        exit(1)
 
     pd = PreprocessorData()
 
@@ -85,7 +84,7 @@ def main():
     macroDefinitionLocationToMacroObject: dict[str, Macro] = {}
 
     for entry in entries:
-        print(entry)
+        #print(entry)
         if entry["Kind"] == "Definition":
             m = Macro(entry["Name"], entry["IsObjectLike"],
                     entry["IsDefinitionLocationValid"], entry["Body"], entry["DefinitionLocation"], entry["EndDefinitionLocation"])
@@ -133,6 +132,21 @@ def main():
         tlna_src_pd.inspected_macro_names,
         tlna_src_pd.local_includes
     )
+
+    return ie_pd
+
+
+def get_interface_equivalent_translations(results_file: str) -> dict[Macro, str]:
+    ie_pd = get_interface_equivalent_preprocessordata(results_file)
+    return generate_macro_translations(ie_pd.mm)
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('results_file', type=str)
+    ap.add_argument('-o', '--output_file')
+    args = ap.parse_args()
+
+    #output_translations(args.results_file, args.output_file)
 
 
 if __name__ == '__main__':
