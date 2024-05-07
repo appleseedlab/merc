@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import os
 import json
 import subprocess
+import concurrent.futures
 
 @dataclass(frozen=True)
 class CompileCommand:
@@ -23,12 +24,11 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
     # Enter source directory
     os.chdir(src_dir)
 
-    print(os.path.relpath(cc.file, src_dir))
-
     args = cc.arguments
     # pass cpp2c plugin shared library file
     args[0] = "clang"
     args.insert(1, f'-fplugin={maki_so_path}')
+    args[-1] = cc.file
     # at the very end, specify that we are only doing syntactic analysis
     # so as to not waste time compiling
     args.append('-fsyntax-only')
@@ -44,21 +44,19 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
 
     print(" ".join(args))
     with open(dst_file, 'w') as ofp:
-        os.chdir(os.path.dirname(cc.file))
+        print(f"Running in dir {os.getcwd()} on args {" ".join(args)}")
         process = subprocess.run(args, stdout=ofp, stderr=subprocess.PIPE)
 
         # stderr
         if process.stderr:
             print(process.stderr)
 
-
-
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("maki_so_path", type=str)
-    ap.add_argument("src_dir", type=str)
-    ap.add_argument("compile_commands", type=str)
-    ap.add_argument("out_dir", type=str)
+    ap.add_argument("--maki_so_path", type=str)
+    ap.add_argument("--src_dir", type=str)
+    ap.add_argument("--compile_commands", type=str)
+    ap.add_argument("--out_dir", type=str, default="maki_results")
     args = ap.parse_args()
 
     maki_so_path = os.path.abspath(args.maki_so_path)
@@ -75,8 +73,11 @@ def main():
     
     compile_commands = [CompileCommand.from_json(cc) for cc in compile_commands]
 
-    for cc in compile_commands:
-        run_maki_on_compile_command(cc, src_dir, maki_so_path, out_dir)
+    # Run maki on each compile command threaded
+    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+        for cc in compile_commands:
+            executor.submit(run_maki_on_compile_command, cc, src_dir, maki_so_path, out_dir)
+
 
 if __name__ == "__main__":
     main()
