@@ -7,15 +7,14 @@ from typing import DefaultDict, Literal, Set
 class Macro:
     Name: str
     IsObjectLike: bool
-    IsDefLocValid: bool
+    IsDefinitionLocationValid: bool
     Body: str
-    DefLocOrError: str
+    DefinitionLocation: str
     EndDefinitionLocation: str
-    # EndDefLoc: str
 
     def defined_in(self, dir: str):
         '''Returns true if the macro was defined in the given dir'''
-        return self.IsDefLocValid and self.DefLocOrError.startswith(dir)
+        return self.IsDefinitionLocationValid and self.DefinitionLocation.startswith(dir)
 
     @property
     def IsFunctionLike(self) -> bool:
