@@ -4,6 +4,7 @@ import os
 import json
 import subprocess
 import concurrent.futures
+import queue
 
 @dataclass(frozen=True)
 class CompileCommand:
@@ -12,7 +13,7 @@ class CompileCommand:
     file: str
 
     @staticmethod
-    def from_json(json: dict):
+    def from_json(json: dict) -> 'CompileCommand':
         return CompileCommand(
             directory=json["directory"],
             arguments=json["arguments"],
@@ -20,9 +21,7 @@ class CompileCommand:
         )
 
 
-def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: str, out_dir: str):
-    # Enter source directory
-    os.chdir(src_dir)
+def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: str, out_file_path: str, result_queue : queue.Queue) -> None:
 
     args = cc.arguments
     # pass cpp2c plugin shared library file
@@ -33,36 +32,38 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
     # so as to not waste time compiling
     args.append('-fsyntax-only')
 
-    dst_file = os.path.join(out_dir, os.path.relpath(cc.file, src_dir))
-
-    # Create the output directory if it doesn't exist
-    os.makedirs(os.path.dirname(dst_file), exist_ok=True)
-
-    # Change the file extension to .maki
-    root, _ = os.path.splitext(dst_file)
-    dst_file = root + '.maki'
 
     print(" ".join(args))
-    with open(dst_file, 'w') as ofp:
-        print(f"Running in dir {os.getcwd()} on args {" ".join(args)}")
-        process = subprocess.run(args, stdout=ofp, stderr=subprocess.PIPE)
 
+    try:
+        # lot of build processes do include paths relative to source file directory
+        os.chdir(cc.directory)
+        
+        print(f"Compiling {cc.file} with args {" ".join(args)}")
+        process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        result_queue.put(json.loads(process.stdout))
         # stderr
         if process.stderr:
             print(process.stderr)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running maki on {cc.file}: {e}")
+        print(e.stderr)
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--maki_so_path", type=str)
     ap.add_argument("--src_dir", type=str)
     ap.add_argument("--compile_commands", type=str)
-    ap.add_argument("--out_dir", type=str, default="maki_results")
+    ap.add_argument("--maki_out_path", type=str, default="analysis.maki")
+    ap.add_argument("--num_threads", type=int, default=os.cpu_count())
     args = ap.parse_args()
 
     maki_so_path = os.path.abspath(args.maki_so_path)
     src_dir = os.path.abspath(args.src_dir)
     compile_commands = os.path.abspath(args.compile_commands)
-    out_dir = os.path.abspath(args.out_dir)
+    maki_out_path = os.path.abspath(args.maki_out_path)
+    num_threads = args.num_threads
 
     # Load the compile_commands.json file (fail if it doesn't exist)
     try:
@@ -73,10 +74,29 @@ def main():
     
     compile_commands = [CompileCommand.from_json(cc) for cc in compile_commands]
 
+    # Store results in queue
+    result_queue = queue.Queue()
+
     # Run maki on each compile command threaded
-    with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         for cc in compile_commands:
-            executor.submit(run_maki_on_compile_command, cc, src_dir, maki_so_path, out_dir)
+            executor.submit(run_maki_on_compile_command, cc, src_dir, maki_so_path, maki_out_path, result_queue)
+
+    # Collect results (JSON Arrays) into one large JSON Array
+    # Doing this to avoid duplicates, which there was many of especially for compiler builtins
+    results_set = set()
+    while not result_queue.empty():
+        # merge into set
+        res = result_queue.get()
+        for obj in res:
+            obj_tuple = tuple(obj.items())
+            results_set.add(obj_tuple)
+
+    results = [dict(obj) for obj in results_set]
+
+    # Write results to file 
+    with open(maki_out_path, 'w') as out:
+        json.dump(results, out)
 
 
 if __name__ == "__main__":
