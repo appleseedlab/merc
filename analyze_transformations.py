@@ -55,35 +55,64 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str]:
         invocation = next(iter(invocations), None)
         assert invocation is not None
 
+         
+
+        # Static to avoid breaking the one definition rule
         if macro.IsFunctionLike:
-            translationMap[macro] = f"{invocation.TypeSignature} {{ return {macro.Body} }};" 
+            # return only if not void
+            returnStatement = "return" if not invocation.TypeSignature.startswith("void") else ""
+            translationMap[macro] = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}" 
         # For now just make it a variable. Consider anonymous enum in the future
         elif macro.IsObjectLike:
-            translationMap[macro] = f"{invocation.TypeSignature} = {macro.Body};" 
+            # NOTE: Cases where ICEs aren't required aren't detected in all cases. 
+            # For now, if we have an integral type make it an enum 
+            # This will not work for anything not representable as an int!!
+
+            # check if any invocations can be enums
+            if any([i.IsInvokedWhereICERequired for i in invocations]) or invocation.TypeSignature.startswith(("int", "unsigned", "short")):
+                # need enum for ICE
+                translationMap[macro] = f"enum {{ {macro.Name} = {macro.Body} }};"
+            else:
+                translationMap[macro] = f"const static {invocation.TypeSignature} = {macro.Body};" 
 
     return translationMap
 
 
 def get_interface_equivalent_preprocessordata(results_file: str) -> PreprocessorData:
+    unique_names = {}
+
     try:
         with open(results_file) as fp:
             entries = json.load(fp)
+
+            # Keep only one macro definition. if there's more than one, keep none
+            for obj in entries:
+                if obj["Kind"] == "Definition":
+                    if obj["Name"] in unique_names:
+                        unique_names[obj["Name"]] = None
+                    else:
+                        unique_names[obj["Name"]] = obj
     except Exception as e:
         print(f"Error reading file {results_file}: {e}")
         exit(1)
+
+    # Filter out the None values.
+    filtered_entries = [obj for obj in entries if obj["Name"] is not None]
+
+    # Sort the entries so that Definitions come first (we need to know them before we look at invocations)
+    filtered_entries.sort(key=lambda obj: obj["Kind"] == "Definition", reverse=True)
 
     pd = PreprocessorData()
 
     # src directory, to be initialized during the analysis
     src_dir = ''
 
-
     # We need this because invocations don't have all the information necessary
     # to construct a macro to use as a key in the macro map (pd.mm)
     # NOTE: Currently ignores macros without FileEntry data (i.e compiler built-ins)
     macroDefinitionLocationToMacroObject: dict[str, Macro] = {}
-
-    for entry in entries:
+    
+    for entry in filtered_entries:
         #print(entry)
         if entry["Kind"] == "Definition":
             m = Macro(entry["Name"], entry["IsObjectLike"],
@@ -92,6 +121,7 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
                 pd.mm[m] = set()
             if m.IsDefinitionLocationValid: 
                 macroDefinitionLocationToMacroObject[entry["DefinitionLocation"]] = m
+            print(f"Adding macro {m.Name}")
 
         elif entry["Kind"] == 'InspectedByCPP':
             pd.inspected_macro_names.add(entry["Name"])
@@ -146,8 +176,7 @@ def main():
     ap.add_argument('-o', '--output_file')
     args = ap.parse_args()
 
-    #output_translations(args.results_file, args.output_file)
-
+    # Currently a stub, could easily modify to run on a single source file 
 
 if __name__ == '__main__':
     main()
