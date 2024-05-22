@@ -1,4 +1,4 @@
-# babel_fish
+# MerC
 
 # A Python tool for detecting and translating easy to translate C macros
 
