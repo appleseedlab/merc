@@ -50,6 +50,7 @@ class Invocation:
     DoesAnyArgumentContainDeclRefExpr: bool
 
     IsHygienic: bool
+    IsICERepresentableByInt32: bool
     IsDefinitionLocationValid: bool
     IsInvocationLocationValid: bool
     IsObjectLike: bool

@@ -62,18 +62,21 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str]:
             # return only if not void
             returnStatement = "return" if not invocation.TypeSignature.startswith("void") else ""
             translationMap[macro] = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}" 
-        # For now just make it a variable. Consider anonymous enum in the future
-        elif macro.IsObjectLike:
-            # NOTE: Cases where ICEs aren't required aren't detected in all cases. 
-            # For now, if we have an integral type make it an enum 
-            # This will not work for anything not representable as an int!!
 
-            # check if any invocations can be enums
-            if any([i.IsInvokedWhereICERequired for i in invocations]) or invocation.TypeSignature.startswith(("int", "unsigned", "short")):
-                # need enum for ICE
+        elif macro.IsObjectLike:
+            # All invocations where an ICE is required must be representable by type int 
+            # to be translatable to an enum
+            can_translate_to_enum = all([i.IsICERepresentableByInt32 for i in invocations if i.IsInvokedWhereICERequired])
+
+            # If no invocations require ICE, just make it a static const variable
+            not_invoked_where_ICE_required = all([not i.IsInvokedWhereICERequired for i in invocations])
+
+            if not_invoked_where_ICE_required:
+                translationMap[macro] = f"static const {invocation.TypeSignature} = {macro.Body};" 
+            elif can_translate_to_enum:
                 translationMap[macro] = f"enum {{ {macro.Name} = {macro.Body} }};"
             else:
-                translationMap[macro] = f"const static {invocation.TypeSignature} = {macro.Body};" 
+                translationMap[macro] = None
 
     return translationMap
 

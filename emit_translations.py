@@ -7,6 +7,10 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
     # dict of src files to their contents in lines
     src_file_contents : dict[str, list[str]] = {}
     for macro, translation in translations.items():
+        # If we don't have a translation for this macro, skip it
+        if translation is None:
+            continue
+
         # open the source file
         startDefLocParts = macro.DefinitionLocation.split(":")
         endDefLocParts = macro.EndDefinitionLocation.split(":")
@@ -29,8 +33,8 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
         else:
             src_file_content = src_file_contents[src_file_path]
 
+
         # replace macro with translation
-    
         # Clear lines between start and end definition location
         startLine = int(startDefLocParts[1]) - 1
         endLine = int(endDefLocParts[1]) - 1
