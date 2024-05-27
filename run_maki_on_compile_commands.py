@@ -32,6 +32,10 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
     # so as to not waste time compiling
     args.append('-fsyntax-only')
 
+    # Add ignore flags for system headers, builtins, and invalid locations
+    args.append('-fplugin-arg-maki---no-system-macros')
+    args.append('-fplugin-arg-maki---no-builtin-macros')
+    args.append('-fplugin-arg-maki---no-invalid-macros')
 
     print(" ".join(args))
 
