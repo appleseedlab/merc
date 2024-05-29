@@ -14,6 +14,9 @@ def ie_def(m: Macro, pd: PreprocessorData) -> bool:
     # All invocations must have the same type signature
     if len(set([i.TypeSignature for i in is_])) != 1:
         return False
+    # The macro must be defined at global scope
+    if not m.IsDefinedAtGlobalScope:
+        return False
     return (
         (m.IsObjectLike and all([
             all([

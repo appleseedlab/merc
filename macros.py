@@ -8,6 +8,7 @@ class Macro:
     Name: str
     IsObjectLike: bool
     IsDefinitionLocationValid: bool
+    IsDefinedAtGlobalScope: bool
     Body: str
     DefinitionLocation: str
     EndDefinitionLocation: str

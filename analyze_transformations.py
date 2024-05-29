@@ -40,6 +40,7 @@ def easy_to_transform_invocation(i: Invocation,
 def easy_to_transform_definition(m: Macro,
                                  pd: PreprocessorData,
                                  ie_invocations: Set[Invocation]):
+
     return all([
         easy_to_transform_invocation(i, pd, ie_invocations)
         for i in pd.mm[m]
@@ -118,8 +119,8 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
     for entry in filtered_entries:
         #print(entry)
         if entry["Kind"] == "Definition":
-            m = Macro(entry["Name"], entry["IsObjectLike"],
-                    entry["IsDefinitionLocationValid"], entry["Body"], entry["DefinitionLocation"], entry["EndDefinitionLocation"])
+            del entry["Kind"]
+            m = Macro(**entry)
             if m not in pd.mm:
                 pd.mm[m] = set()
             if m.IsDefinitionLocationValid: 
