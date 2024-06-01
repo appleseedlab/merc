@@ -1,11 +1,14 @@
+#!/usr/bin/python3
+
 import argparse
 import os
-from analyze_transformations import Macro, PreprocessorData, InvocationPredicate, Invocation, get_interface_equivalent_preprocessordata, get_interface_equivalent_translations
+
+from analyze_transformations import Macro, get_interface_equivalent_translations
 
 
 def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, str]) -> None:
     # dict of src files to their contents in lines
-    src_file_contents : dict[str, list[str]] = {}
+    src_file_contents: dict[str, list[str]] = {}
     for macro, translation in translations.items():
         # If we don't have a translation for this macro, skip it
         if translation is None:
@@ -33,7 +36,6 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
         else:
             src_file_content = src_file_contents[src_file_path]
 
-
         # replace macro with translation
         # Clear lines between start and end definition location
         startLine = int(startDefLocParts[1]) - 1
@@ -54,7 +56,6 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
             f.writelines(src_file_content)
 
 
-
 def main():
     args = argparse.ArgumentParser()
 
@@ -63,7 +64,6 @@ def main():
     args.add_argument('translation_output_dir', type=str)
 
     args = args.parse_args()
-
 
     input_src_dir = os.path.abspath(args.input_src_dir)
     maki_results_path = os.path.abspath(args.maki_results_path)
@@ -75,4 +75,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

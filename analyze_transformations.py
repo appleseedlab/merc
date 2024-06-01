@@ -1,6 +1,3 @@
-#!/usr/bin/python3
-
-import argparse
 import json
 from typing import Set
 
@@ -157,16 +154,3 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
 def get_interface_equivalent_translations(results_file: str) -> dict[Macro, str]:
     ie_pd = get_interface_equivalent_preprocessordata(results_file)
     return generate_macro_translations(ie_pd.mm)
-
-
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('results_file', type=str)
-    ap.add_argument('-o', '--output_file')
-    args = ap.parse_args()
-
-    # Currently a stub, could easily modify to run on a single source file 
-
-
-if __name__ == '__main__':
-    main()

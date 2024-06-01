@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 import argparse
 from dataclasses import dataclass
 import os
@@ -5,6 +7,7 @@ import json
 import subprocess
 import concurrent.futures
 import queue
+
 
 @dataclass(frozen=True)
 class CompileCommand:
@@ -21,8 +24,8 @@ class CompileCommand:
         )
 
 
-def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: str, out_file_path: str, result_queue : queue.Queue) -> None:
-
+def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: str, out_file_path: str,
+                                result_queue: queue.Queue) -> None:
     args = cc.arguments
     # pass cpp2c plugin shared library file
     args[0] = "clang"
@@ -42,7 +45,7 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
     try:
         # lot of build processes do include paths relative to source file directory
         os.chdir(cc.directory)
-        
+
         print(f"Compiling {cc.file} with args {" ".join(args)}")
         process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -53,6 +56,7 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
     except subprocess.CalledProcessError as e:
         print(f"Error running maki on {cc.file}: {e}")
         print(e.stderr)
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -75,7 +79,7 @@ def main():
             compile_commands = json.load(fp)
     except FileNotFoundError:
         print(f"Could not find compile_commands.json in {src_dir}")
-    
+
     compile_commands = [CompileCommand.from_json(cc) for cc in compile_commands]
 
     # Store results in queue
