@@ -2,30 +2,17 @@
 
 import argparse
 import json
-from typing import Callable, List, Set
+from typing import Set
 
-from macros import Invocation, Macro, MacroMap, PreprocessorData
+from macros import Macro, MacroMap
 from predicates.argument_altering import aa_invocation
 from predicates.call_site_context_altering import csca_invocation
 from predicates.declaration_altering import da_invocation
 from predicates.interface_equivalent import ie_def
 from predicates.metaprogramming import mp_invocation
-from predicates.thunkizing import thunkizing_invocation
 from predicates.property_categories import *
+from predicates.thunkizing import thunkizing_invocation
 
-InvocationPredicate = Callable[[Invocation, PreprocessorData], bool]
-
-def only(i: Invocation,
-         pd: PreprocessorData,
-         p: InvocationPredicate,
-         ps: List[InvocationPredicate]):
-    '''
-    Returns true if the predicate p is the only one that this
-    transformation satisfies.
-    '''
-    assert p in ps
-    satisfied = [p for p in ps if p(i, pd)]
-    return satisfied == [p]
 
 def easy_to_transform_invocation(i: Invocation,
                                  pd: PreprocessorData,
@@ -40,7 +27,6 @@ def easy_to_transform_invocation(i: Invocation,
 def easy_to_transform_definition(m: Macro,
                                  pd: PreprocessorData,
                                  ie_invocations: Set[Invocation]):
-
     return all([
         easy_to_transform_invocation(i, pd, ie_invocations)
         for i in pd.mm[m]
@@ -56,24 +42,23 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str]:
         invocation = next(iter(invocations), None)
         assert invocation is not None
 
-         
-
         # Static to avoid breaking the one definition rule
         if macro.IsFunctionLike:
             # return only if not void
             returnStatement = "return" if not invocation.TypeSignature.startswith("void") else ""
-            translationMap[macro] = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}" 
+            translationMap[macro] = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}"
 
         elif macro.IsObjectLike:
             # All invocations where an ICE is required must be representable by type int 
             # to be translatable to an enum
-            can_translate_to_enum = all([i.IsICERepresentableByInt32 for i in invocations if i.IsInvokedWhereICERequired])
+            can_translate_to_enum = all(
+                [i.IsICERepresentableByInt32 for i in invocations if i.IsInvokedWhereICERequired])
 
             # If no invocations require ICE, just make it a static const variable
             not_invoked_where_ICE_required = all([not i.IsInvokedWhereICERequired for i in invocations])
 
             if not_invoked_where_ICE_required:
-                translationMap[macro] = f"static const {invocation.TypeSignature} = {macro.Body};" 
+                translationMap[macro] = f"static const {invocation.TypeSignature} = {macro.Body};"
             elif can_translate_to_enum:
                 translationMap[macro] = f"enum {{ {macro.Name} = {macro.Body} }};"
             else:
@@ -115,15 +100,14 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
     # to construct a macro to use as a key in the macro map (pd.mm)
     # NOTE: Currently ignores macros without FileEntry data (i.e compiler built-ins)
     macroDefinitionLocationToMacroObject: dict[str, Macro] = {}
-    
+
     for entry in filtered_entries:
-        #print(entry)
         if entry["Kind"] == "Definition":
             del entry["Kind"]
             m = Macro(**entry)
             if m not in pd.mm:
                 pd.mm[m] = set()
-            if m.IsDefinitionLocationValid: 
+            if m.IsDefinitionLocationValid:
                 macroDefinitionLocationToMacroObject[entry["DefinitionLocation"]] = m
             print(f"Adding macro {m.Name}")
 
@@ -135,7 +119,7 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
         elif entry["Kind"] == 'Invocation':
             del entry["Kind"]
             i = Invocation(**entry)
-            if i.IsDefinitionLocationValid: 
+            if i.IsDefinitionLocationValid:
                 m = macroDefinitionLocationToMacroObject[i.DefinitionLocation]
                 # Only record unique invocations - two invocations may have the same
                 # location if they are the same nested invocation
@@ -174,6 +158,7 @@ def get_interface_equivalent_translations(results_file: str) -> dict[Macro, str]
     ie_pd = get_interface_equivalent_preprocessordata(results_file)
     return generate_macro_translations(ie_pd.mm)
 
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('results_file', type=str)
@@ -181,6 +166,7 @@ def main():
     args = ap.parse_args()
 
     # Currently a stub, could easily modify to run on a single source file 
+
 
 if __name__ == '__main__':
     main()
