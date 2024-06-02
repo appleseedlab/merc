@@ -1,9 +1,12 @@
 #!/usr/bin/python3
 
 import argparse
+import logging
 import os
 
 from analyze_transformations import Macro, get_interface_equivalent_translations
+
+logger = logging.getLogger(__name__)
 
 
 def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, str]) -> None:
@@ -22,10 +25,10 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 
         # only open files in src dir
         if not src_file_path.startswith(src_dir):
-            print(f"Skipping {src_file_path} because it is not in the source directory {src_dir}")
+            logger.warning(f"Skipping {src_file_path} because it is not in the source directory {src_dir}")
             continue
 
-        print(f"Translating {src_file_path}")
+        logger.info(f"Translating {src_file_path}")
 
         src_file_content: list[str] = None
 
@@ -44,7 +47,7 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
         for i in range(startLine, endLine + 1):
             src_file_content[i] = '\n'
 
-        print(f"Translation: {translation}")
+        logger.debug(f"Translation for {src_file_path}: {translation}")
 
         # Insert the translation
         src_file_content[startLine] = translation + '\n'
@@ -57,17 +60,20 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 
 
 def main():
-    args = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser()
 
-    args.add_argument('input_src_dir', type=str)
-    args.add_argument('maki_results_path', type=str)
-    args.add_argument('translation_output_dir', type=str)
-
-    args = args.parse_args()
+    ap.add_argument('input_src_dir', type=str)
+    ap.add_argument('maki_results_path', type=str)
+    ap.add_argument('translation_output_dir', type=str)
+    ap.add_argument("-v", "--verbose", action='store_true')
+    args = ap.parse_args()
 
     input_src_dir = os.path.abspath(args.input_src_dir)
     maki_results_path = os.path.abspath(args.maki_results_path)
     translation_output_dir = args.translation_output_dir
+
+    log_level = logging.INFO if args.verbose else logging.WARNING
+    logging.basicConfig(level=log_level)
 
     translations = get_interface_equivalent_translations(maki_results_path)
     translate_src_files(input_src_dir, translation_output_dir, translations)

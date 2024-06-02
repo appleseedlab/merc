@@ -1,5 +1,6 @@
 import json
 from typing import Set
+import logging
 
 from macros import Macro, MacroMap
 from predicates.argument_altering import aa_invocation
@@ -9,6 +10,8 @@ from predicates.interface_equivalent import ie_def
 from predicates.metaprogramming import mp_invocation
 from predicates.property_categories import *
 from predicates.thunkizing import thunkizing_invocation
+
+logger = logging.getLogger(__name__)
 
 
 def easy_to_transform_invocation(i: Invocation,
@@ -79,7 +82,7 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
                     else:
                         unique_names[obj["Name"]] = obj
     except Exception as e:
-        print(f"Error reading file {results_file}: {e}")
+        logging.critical(f"Error reading file {results_file}: {e}")
         exit(1)
 
     # Filter out the None values.
@@ -106,8 +109,7 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
                 pd.mm[m] = set()
             if m.IsDefinitionLocationValid:
                 macroDefinitionLocationToMacroObject[entry["DefinitionLocation"]] = m
-            print(f"Adding macro {m.Name}")
-
+                logging.debug(f"Adding name {m.Name} to macroDefinitionLocationToMacroObject")
         elif entry["Kind"] == 'InspectedByCPP':
             pd.inspected_macro_names.add(entry["Name"])
         elif entry["Kind"] == "Include":

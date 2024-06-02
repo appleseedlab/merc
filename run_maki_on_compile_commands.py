@@ -1,12 +1,15 @@
 #!/usr/bin/python3
 
 import argparse
+import logging
 from dataclasses import dataclass
 import os
 import json
 import subprocess
 import concurrent.futures
 import queue
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -40,22 +43,20 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
     args.append('-fplugin-arg-maki---no-builtin-macros')
     args.append('-fplugin-arg-maki---no-invalid-macros')
 
-    print(" ".join(args))
 
     try:
         # lot of build processes do include paths relative to source file directory
         os.chdir(cc.directory)
 
-        print(f"Compiling {cc.file} with args {" ".join(args)}")
+        logger.info(f"Compiling {cc.file} with args {" ".join(args)}")
         process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         result_queue.put(json.loads(process.stdout))
         # stderr
         if process.stderr:
-            print(process.stderr)
+            logger.warning(f"clang stderr: {process.stderr}")
     except subprocess.CalledProcessError as e:
-        print(f"Error running maki on {cc.file}: {e}")
-        print(e.stderr)
+        logger.exception(f"Error running maki with args {args} on {cc.file}: {e}")
 
 
 def main():
@@ -65,6 +66,7 @@ def main():
     ap.add_argument("--compile_commands", type=str)
     ap.add_argument("--maki_out_path", type=str, default="analysis.maki")
     ap.add_argument("--num_threads", type=int, default=os.cpu_count())
+    ap.add_argument("-v", "--verbose", action='store_true')
     args = ap.parse_args()
 
     maki_so_path = os.path.abspath(args.maki_so_path)
@@ -73,12 +75,15 @@ def main():
     maki_out_path = os.path.abspath(args.maki_out_path)
     num_threads = args.num_threads
 
+    log_level = logging.INFO if args.verbose else logging.WARNING
+    logging.basicConfig(level=log_level)
+
     # Load the compile_commands.json file (fail if it doesn't exist)
     try:
         with open(compile_commands) as fp:
             compile_commands = json.load(fp)
     except FileNotFoundError:
-        print(f"Could not find compile_commands.json in {src_dir}")
+        logger.critical(f"Could not find compile_commands.json in {src_dir}")
 
     compile_commands = [CompileCommand.from_json(cc) for cc in compile_commands]
 
