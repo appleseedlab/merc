@@ -62,21 +62,25 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument('input_src_dir', type=str)
-    ap.add_argument('maki_results_path', type=str)
-    ap.add_argument('translation_output_dir', type=str)
-    ap.add_argument("-v", "--verbose", action='store_true')
+    ap.add_argument('-i', '--input_src_dir', type=str, required=True,
+                    help='Path to the program source directory')
+    ap.add_argument('-m', '--maki_analysis_file', type=str, required=True,
+                    help='Path to the maki analysis file.')
+    ap.add_argument('-o', '--output_translation_dir', type=str, required=True,
+                    help='Output directory for translated source files.')
+    ap.add_argument('-v', '--verbose', action='store_true',
+                    help='Enable verbose logging')
     args = ap.parse_args()
 
     input_src_dir = os.path.abspath(args.input_src_dir)
-    maki_results_path = os.path.abspath(args.maki_results_path)
-    translation_output_dir = args.translation_output_dir
+    maki_analysis_path = os.path.abspath(args.maki_analysis_file)
+    output_translation_dir = args.output_translation_dir
 
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level)
 
-    translations = get_interface_equivalent_translations(maki_results_path)
-    translate_src_files(input_src_dir, translation_output_dir, translations)
+    translations = get_interface_equivalent_translations(maki_analysis_path)
+    translate_src_files(input_src_dir, output_translation_dir, translations)
 
 
 if __name__ == '__main__':

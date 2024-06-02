@@ -63,19 +63,24 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> json:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--maki_so_path", type=str)
-    ap.add_argument("--src_dir", type=str)
-    ap.add_argument("--compile_commands", type=str)
-    ap.add_argument("--maki_out_path", type=str, default="analysis.maki")
-    ap.add_argument("--num_threads", type=int, default=os.cpu_count())
-    ap.add_argument("-v", "--verbose", action='store_true')
+    ap.add_argument('-p', '--plugin_path', type=str, required=True,
+                    help='Path to maki clang plugin')
+    ap.add_argument('-i', '--input_src_dir', type=str, required=True,
+                    help='Path to program source directory')
+    ap.add_argument('-c', '--compile_commands', type=str, required=True,
+                    help='Path to compile_commands.json')
+    ap.add_argument('-o', '--analysis_out_path', type=str, default='analysis.maki',
+                    help='Path to output maki analysis file. Default is analysis.maki')
+    ap.add_argument('-j', '--num_jobs', type=int, default=os.cpu_count(),
+                    help='Number of threads to use. Default is number of CPUs on system')
+    ap.add_argument('-v', '--verbose', action='store_true')
     args = ap.parse_args()
 
-    maki_so_path = os.path.abspath(args.maki_so_path)
-    src_dir = os.path.abspath(args.src_dir)
+    plugin_path = os.path.abspath(args.plugin_path)
+    src_dir = os.path.abspath(args.input_src_dir)
     compile_commands = os.path.abspath(args.compile_commands)
-    maki_out_path = os.path.abspath(args.maki_out_path)
-    num_threads = args.num_threads
+    analysis_out_path = os.path.abspath(args.analysis_out_path)
+    num_jobs = args.num_jobs
 
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level)
@@ -92,10 +97,10 @@ def main():
 
 
     # Run maki on each compile command threaded
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_jobs) as executor:
         results = list(
             executor.map(
-                partial(run_maki_on_compile_command, maki_so_path=maki_so_path),
+                partial(run_maki_on_compile_command, maki_so_path=plugin_path),
                 compile_commands
             )
         )
@@ -112,7 +117,7 @@ def main():
     results = [dict(obj) for obj in results_set]
 
     # Write results to file 
-    with open(maki_out_path, 'w') as out:
+    with open(analysis_out_path, 'w') as out:
         json.dump(results, out)
 
 
