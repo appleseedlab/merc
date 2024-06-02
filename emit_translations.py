@@ -30,7 +30,7 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 
         logger.info(f"Translating {src_file_path}")
 
-        src_file_content: list[str] = None
+        src_file_content: list[str]
 
         if src_file_path not in src_file_contents:
             with open(src_file_path, 'r') as f:

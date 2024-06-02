@@ -6,8 +6,8 @@ from dataclasses import dataclass
 import os
 import json
 import subprocess
+from functools import partial
 import concurrent.futures
-import queue
 
 logger = logging.getLogger(__name__)
 
@@ -19,16 +19,16 @@ class CompileCommand:
     file: str
 
     @staticmethod
-    def from_json(json: dict) -> 'CompileCommand':
+    def from_json(json_file: dict) -> 'CompileCommand':
         return CompileCommand(
-            directory=json["directory"],
-            arguments=json["arguments"],
-            file=json["file"]
+            directory=json_file["directory"],
+            arguments=json_file["arguments"],
+            file=json_file["file"]
         )
 
 
-def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: str, out_file_path: str,
-                                result_queue: queue.Queue) -> None:
+def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> json:
+
     args = cc.arguments
     # pass cpp2c plugin shared library file
     args[0] = "clang"
@@ -49,12 +49,14 @@ def run_maki_on_compile_command(cc: CompileCommand, src_dir: str, maki_so_path: 
         os.chdir(cc.directory)
 
         logger.info(f"Compiling {cc.file} with args {" ".join(args)}")
+
         process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-        result_queue.put(json.loads(process.stdout))
         # stderr
         if process.stderr:
             logger.warning(f"clang stderr: {process.stderr}")
+
+        return json.loads(process.stdout)
     except subprocess.CalledProcessError as e:
         logger.exception(f"Error running maki with args {args} on {cc.file}: {e}")
 
@@ -84,24 +86,26 @@ def main():
             compile_commands = json.load(fp)
     except FileNotFoundError:
         logger.critical(f"Could not find compile_commands.json in {src_dir}")
+        return
 
     compile_commands = [CompileCommand.from_json(cc) for cc in compile_commands]
 
-    # Store results in queue
-    result_queue = queue.Queue()
 
     # Run maki on each compile command threaded
-    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
-        for cc in compile_commands:
-            executor.submit(run_maki_on_compile_command, cc, src_dir, maki_so_path, maki_out_path, result_queue)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_threads) as executor:
+        results = list(
+            executor.map(
+                partial(run_maki_on_compile_command, maki_so_path=maki_so_path),
+                compile_commands
+            )
+        )
 
     # Collect results (JSON Arrays) into one large JSON Array
     # Doing this to avoid duplicates, which there was many of especially for compiler builtins
     results_set = set()
-    while not result_queue.empty():
+    for result in results:
         # merge into set
-        res = result_queue.get()
-        for obj in res:
+        for obj in result:
             obj_tuple = tuple(obj.items())
             results_set.add(obj_tuple)
 
