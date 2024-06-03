@@ -1,8 +1,8 @@
 import json
-from typing import Set
+from typing import Set, Any
 import logging
 
-from macros import Macro, MacroMap
+from macros import Macro, MacroMap, PreprocessorData
 from predicates.argument_altering import aa_invocation
 from predicates.call_site_context_altering import csca_invocation
 from predicates.declaration_altering import da_invocation
@@ -33,8 +33,8 @@ def easy_to_transform_definition(m: Macro,
     ])
 
 
-def generate_macro_translations(mm: MacroMap) -> dict[Macro, str]:
-    translationMap: dict[Macro, str] = {}
+def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
+    translationMap: dict[Macro, str | None] = {}
 
     for macro, invocations in mm.items():
         # We only need to look at the first invocation to determine the translation
@@ -68,22 +68,19 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str]:
 
 
 def get_interface_equivalent_preprocessordata(results_file: str) -> PreprocessorData:
-    unique_names = {}
+    unique_names : dict[str, Any] = {}
 
-    try:
-        with open(results_file) as fp:
-            entries = json.load(fp)
+    with open(results_file) as fp:
+        entries = json.load(fp)
 
-            # Keep only one macro definition. if there's more than one, keep none
-            for obj in entries:
-                if obj["Kind"] == "Definition":
-                    if obj["Name"] in unique_names:
-                        unique_names[obj["Name"]] = None
-                    else:
-                        unique_names[obj["Name"]] = obj
-    except Exception as e:
-        logging.critical(f"Error reading file {results_file}: {e}")
-        exit(1)
+        # Keep only one macro definition. if there's more than one, keep none
+        for obj in entries:
+            if obj["Kind"] == "Definition":
+                if obj["Name"] in unique_names:
+                    unique_names[obj["Name"]] = None
+                else:
+                    unique_names[obj["Name"]] = obj
+
 
     # Filter out the None values.
     filtered_entries = [obj for obj in entries if obj["Name"] is not None]
@@ -153,6 +150,6 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
     return ie_pd
 
 
-def get_interface_equivalent_translations(results_file: str) -> dict[Macro, str]:
+def get_interface_equivalent_translations(results_file: str) -> dict[Macro, str | None]:
     ie_pd = get_interface_equivalent_preprocessordata(results_file)
     return generate_macro_translations(ie_pd.mm)

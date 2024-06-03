@@ -8,6 +8,7 @@ import json
 import subprocess
 from functools import partial
 import concurrent.futures
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class CompileCommand:
         )
 
 
-def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> json:
+def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> dict[str, Any]:
 
     args = cc.arguments
     # pass cpp2c plugin shared library file
@@ -54,11 +55,13 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> json:
 
         # stderr
         if process.stderr:
-            logger.warning(f"clang stderr: {process.stderr}")
+            logger.warning(f"clang stderr with args {" ".join(args)}:")
+            logger.warning(f"{process.stderr.decode()}")
 
-        return json.loads(process.stdout)
+        return json.loads(process.stdout.decode())
     except subprocess.CalledProcessError as e:
         logger.exception(f"Error running maki with args {args} on {cc.file}: {e}")
+        return {}
 
 
 def main():
