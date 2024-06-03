@@ -2,13 +2,12 @@ import json
 from typing import Set, Any
 import logging
 
-from macros import Macro, MacroMap, PreprocessorData
+from macros import Macro, MacroMap, PreprocessorData, Invocation
 from predicates.argument_altering import aa_invocation
 from predicates.call_site_context_altering import csca_invocation
 from predicates.declaration_altering import da_invocation
 from predicates.interface_equivalent import ie_def
 from predicates.metaprogramming import mp_invocation
-from predicates.property_categories import *
 from predicates.thunkizing import thunkizing_invocation
 
 logger = logging.getLogger(__name__)
