@@ -32,7 +32,7 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> dict[s
 
     args = cc.arguments
     # pass cpp2c plugin shared library file
-    args[0] = "clang"
+    args[0] = "/usr/bin/clang-17"
     args.insert(1, f'-fplugin={maki_so_path}')
     args[-1] = cc.file
     # at the very end, specify that we are only doing syntactic analysis
@@ -49,13 +49,13 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> dict[s
         # lot of build processes do include paths relative to source file directory
         os.chdir(cc.directory)
 
-        logger.info(f"Compiling {cc.file} with args {" ".join(args)}")
+        logger.info(f"Compiling {cc.file} with args {' '.join(args)}")
 
         process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         # stderr
         if process.stderr:
-            logger.warning(f"clang stderr with args {" ".join(args)}:")
+            logger.warning(f"clang stderr with args {' '.join(args)}:")
             logger.warning(f"{process.stderr.decode()}")
 
         return json.loads(process.stdout.decode())
