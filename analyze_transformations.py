@@ -1,6 +1,7 @@
 import json
 from typing import Set, Any
 import logging
+from collections import Counter
 
 from macros import Macro, MacroMap, PreprocessorData, Invocation
 from predicates.argument_altering import aa_invocation
@@ -65,26 +66,33 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
 
     return translationMap
 
+def filter_definitions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Count the number of definitions with a given name
+    name_counts = Counter(obj["Name"] for obj in entries if obj["Kind"] == "Definition")
+
+    # Create set of definition names that only appear once
+    filtered_names = {name for name in name_counts if name_counts[name] == 1}
+
+    # Filter out definitions and invocations that are not in filtered_names
+    filtered_entries = [
+        obj for obj in entries
+        if not ((obj["Kind"] == "Definition" and obj["Name"] not in filtered_names) or
+               (obj["Kind"] == "Invocation" and obj["Name"] not in filtered_names))
+    ]
+
+    return filtered_entries
 
 def get_interface_equivalent_preprocessordata(results_file: str) -> PreprocessorData:
-    unique_names : dict[str, Any] = {}
 
     with open(results_file) as fp:
         entries = json.load(fp)
 
-        # Keep only one macro definition. if there's more than one, keep none
-        for obj in entries:
-            if obj["Kind"] == "Definition":
-                if obj["Name"] in unique_names:
-                    unique_names[obj["Name"]] = None
-                else:
-                    unique_names[obj["Name"]] = obj
+    # Filter out duplicate definitions: keep none if there is more than one
+    # We need to do this to avoid (possibly) breaking the one definition rule
+    # i.e if file B includes file A, both have a definition with the same name
+    filtered_entries = filter_definitions(entries)
 
-
-    # Filter out the None values.
-    filtered_entries = [obj for obj in entries if obj["Name"] is not None]
-
-    # Sort the entries so that Definitions come first (we need to know them before we look at invocations)
+    # We need definitions to come first as we map invocations to them
     filtered_entries.sort(key=lambda obj: obj["Kind"] == "Definition", reverse=True)
 
     pd = PreprocessorData()
