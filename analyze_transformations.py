@@ -2,6 +2,7 @@ import json
 from typing import Set, Any
 import logging
 from collections import Counter
+import re
 
 from macros import Macro, MacroMap, PreprocessorData, Invocation
 from predicates.argument_altering import aa_invocation
@@ -44,8 +45,11 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
 
         # Static to avoid breaking the one definition rule
         if macro.IsFunctionLike:
-            # return only if not void
-            returnStatement = "return" if not invocation.TypeSignature.startswith("void") else ""
+            # Make sure we don't return for void functions,
+            # but do return for void * and anything else
+            pattern = r"void(?!\s*\*)"
+
+            returnStatement = "return" if not re.match(pattern, invocation.TypeSignature) else ""
             translationMap[macro] = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}"
 
         elif macro.IsObjectLike:
