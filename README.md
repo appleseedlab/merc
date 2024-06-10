@@ -44,7 +44,7 @@ For example, running on bc may look like this:
 python3 run_maki_on_compile_commands.py -p ../maki/build/lib/libmaki.so -i ../bc-1.07/ -c ../bc-1.07/compile_commands.json
 ```
 
-You should now have a generated analysis.maki file in the MerC directory (unless you specified another output directory) 
+You should now have a generated `analysis.maki` file in the MerC directory (unless you specified another output directory) 
 
 ### 4. Run `emit_translations.py` on the `analysis.maki` file 
 
