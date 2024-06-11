@@ -1,31 +1,19 @@
-#!/usr/bin/python3
-
-import argparse
 import json
-from typing import Callable, List, Set
+from typing import Set, Any
+import logging
+from collections import Counter
+import re
 
-from macros import Invocation, Macro, PreprocessorData
+from macros import Macro, MacroMap, PreprocessorData, Invocation
 from predicates.argument_altering import aa_invocation
 from predicates.call_site_context_altering import csca_invocation
 from predicates.declaration_altering import da_invocation
 from predicates.interface_equivalent import ie_def
 from predicates.metaprogramming import mp_invocation
 from predicates.thunkizing import thunkizing_invocation
-from predicates.property_categories import *
 
-InvocationPredicate = Callable[[Invocation, PreprocessorData], bool]
+logger = logging.getLogger(__name__)
 
-def only(i: Invocation,
-         pd: PreprocessorData,
-         p: InvocationPredicate,
-         ps: List[InvocationPredicate]):
-    '''
-    Returns true if the predicate p is the only one that this
-    transformation satisfies.
-    '''
-    assert p in ps
-    satisfied = [p for p in ps if p(i, pd)]
-    return satisfied == [p]
 
 def easy_to_transform_invocation(i: Invocation,
                                  pd: PreprocessorData,
@@ -46,36 +34,90 @@ def easy_to_transform_definition(m: Macro,
     ])
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('results_file', type=str)
-    ap.add_argument('-o', '--output_file')
-    args = ap.parse_args()
+def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
+    translationMap: dict[Macro, str | None] = {}
 
-    with open(args.results_file) as fp:
+    for macro, invocations in mm.items():
+        # We only need to look at the first invocation to determine the translation
+        # Already verified that all type signatures are the same
+        invocation = next(iter(invocations), None)
+        assert invocation is not None
+
+        # Static to avoid breaking the one definition rule
+        if macro.IsFunctionLike:
+            # Make sure we don't return for void functions,
+            # but do return for void * and anything else
+            pattern = r"void(?!\s*\*)"
+
+            returnStatement = "return" if not re.match(pattern, invocation.TypeSignature) else ""
+            translationMap[macro] = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}"
+
+        elif macro.IsObjectLike:
+            # All invocations where an ICE is required must be representable by type int 
+            # to be translatable to an enum
+            can_translate_to_enum = all(
+                [i.IsICERepresentableByInt32 for i in invocations if i.IsInvokedWhereICERequired])
+
+            # If no invocations require ICE, just make it a static const variable
+            not_invoked_where_ICE_required = all([not i.IsInvokedWhereICERequired for i in invocations])
+
+            if not_invoked_where_ICE_required:
+                translationMap[macro] = f"static const {invocation.TypeSignature} = {macro.Body};"
+            elif can_translate_to_enum:
+                translationMap[macro] = f"enum {{ {macro.Name} = {macro.Body} }};"
+            else:
+                translationMap[macro] = None
+
+    return translationMap
+
+def filter_definitions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    # Count the number of definitions with a given name
+    name_counts = Counter(obj["Name"] for obj in entries if obj["Kind"] == "Definition")
+
+    # Create set of definition names that only appear once
+    filtered_names = {name for name in name_counts if name_counts[name] == 1}
+
+    # Filter out definitions and invocations that are not in filtered_names
+    filtered_entries = [
+        obj for obj in entries
+        if not ((obj["Kind"] == "Definition" and obj["Name"] not in filtered_names) or
+               (obj["Kind"] == "Invocation" and obj["Name"] not in filtered_names))
+    ]
+
+    return filtered_entries
+
+def get_interface_equivalent_preprocessordata(results_file: str) -> PreprocessorData:
+
+    with open(results_file) as fp:
         entries = json.load(fp)
+
+    # Filter out duplicate definitions: keep none if there is more than one
+    # We need to do this to avoid (possibly) breaking the one definition rule
+    # i.e if file B includes file A, both have a definition with the same name
+    filtered_entries = filter_definitions(entries)
+
+    # We need definitions to come first as we map invocations to them
+    filtered_entries.sort(key=lambda obj: obj["Kind"] == "Definition", reverse=True)
 
     pd = PreprocessorData()
 
     # src directory, to be initialized during the analysis
     src_dir = ''
 
-
     # We need this because invocations don't have all the information necessary
     # to construct a macro to use as a key in the macro map (pd.mm)
     # NOTE: Currently ignores macros without FileEntry data (i.e compiler built-ins)
     macroDefinitionLocationToMacroObject: dict[str, Macro] = {}
 
-    for entry in entries:
-        print(entry)
+    for entry in filtered_entries:
         if entry["Kind"] == "Definition":
-            m = Macro(entry["Name"], entry["IsObjectLike"],
-                    entry["IsDefinitionLocationValid"], entry["Body"], entry["DefinitionLocation"], entry["EndDefinitionLocation"])
+            del entry["Kind"]
+            m = Macro(**entry)
             if m not in pd.mm:
                 pd.mm[m] = set()
-            if m.IsDefinitionLocationValid: 
+            if m.IsDefinitionLocationValid:
                 macroDefinitionLocationToMacroObject[entry["DefinitionLocation"]] = m
-
+                logging.debug(f"Adding name {m.Name} to macroDefinitionLocationToMacroObject")
         elif entry["Kind"] == 'InspectedByCPP':
             pd.inspected_macro_names.add(entry["Name"])
         elif entry["Kind"] == "Include":
@@ -84,7 +126,7 @@ def main():
         elif entry["Kind"] == 'Invocation':
             del entry["Kind"]
             i = Invocation(**entry)
-            if i.IsDefinitionLocationValid: 
+            if i.IsDefinitionLocationValid:
                 m = macroDefinitionLocationToMacroObject[i.DefinitionLocation]
                 # Only record unique invocations - two invocations may have the same
                 # location if they are the same nested invocation
@@ -116,6 +158,9 @@ def main():
         tlna_src_pd.local_includes
     )
 
+    return ie_pd
 
-if __name__ == '__main__':
-    main()
+
+def get_interface_equivalent_translations(results_file: str) -> dict[Macro, str | None]:
+    ie_pd = get_interface_equivalent_preprocessordata(results_file)
+    return generate_macro_translations(ie_pd.mm)

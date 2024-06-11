@@ -1,6 +1,5 @@
-from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import DefaultDict, Literal, Set
+from typing import Literal, Set
 
 
 @dataclass(frozen=True)
@@ -8,6 +7,7 @@ class Macro:
     Name: str
     IsObjectLike: bool
     IsDefinitionLocationValid: bool
+    IsDefinedAtGlobalScope: bool
     Body: str
     DefinitionLocation: str
     EndDefinitionLocation: str
@@ -50,6 +50,7 @@ class Invocation:
     DoesAnyArgumentContainDeclRefExpr: bool
 
     IsHygienic: bool
+    IsICERepresentableByInt32: bool
     IsDefinitionLocationValid: bool
     IsInvocationLocationValid: bool
     IsObjectLike: bool
@@ -264,11 +265,11 @@ class Invocation:
         return self.MustUseMetaprogrammingToTransform
 
 
-MacroMap = DefaultDict[Macro, Set[Invocation]]
+MacroMap = dict[Macro, Set[Invocation]]
 
 
 @dataclass
 class PreprocessorData:
-    mm: MacroMap = field(default_factory=lambda: defaultdict(set))
+    mm: MacroMap = field(default_factory=dict)
     inspected_macro_names: Set[str] = field(default_factory=set)
     local_includes: Set[str] = field(default_factory=set)
