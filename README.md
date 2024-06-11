@@ -35,21 +35,21 @@ You should now have a `compile_commands.json` in the directory of your target pr
 The format for running the script is as follows:
 
 ```
-python3 run_maki_on_compile_commands.py \
-    -p <path to maki plugin> \
-    -i <target program source directory> \
-    -c <path to compile_commands.json> \
-    -o <path to output maki analysis file, default is analysis.maki> \
-    -j <number of threads, default is number of CPUs on system> \
+python3 run_maki_on_compile_commands.py 
+    -p <path to maki plugin> 
+    -i <target program source directory> 
+    -c <path to compile_commands.json> 
+    -o <path to output maki analysis file, default is analysis.maki> 
+    -j <number of threads, default is number of CPUs on system> 
     -v <verbose>
 ``` 
 
   
 For example, running on bc may look like this: 
 ```
-python3 run_maki_on_compile_commands.py \
-    -p ../maki/build/lib/libmaki.so \
-    -i ../bc-1.07/ \
+python3 run_maki_on_compile_commands.py 
+    -p ../maki/build/lib/libmaki.so 
+    -i ../bc-1.07/ 
     -c ../bc-1.07/compile_commands.json
 ```
 
@@ -60,10 +60,10 @@ You should now have a generated `analysis.maki` file in the MerC directory (unle
 The format for running the script is as follows: 
 
 ```
-python3 emit_translations.py \
-    -i <path to target program source directory> \
-    -m <path to maki analysis file> \
-    -o <(required) path to output directory for translation> \
+python3 emit_translations.py 
+    -i <path to target program source directory> 
+    -m <path to maki analysis file> 
+    -o <(required) path to output directory for translation> 
     -v <verbose>
 ```
 
