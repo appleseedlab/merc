@@ -15,7 +15,7 @@ For example, if running on bc:
 wget https://mirrors.kernel.org/gnu/bc/bc-1.07.tar.gz
 tar -xzf bc-1.07.tar.gz
 ```
-Ensure you have the dependencies:
+Ensure you have the bc dependencies:
 ```
 apt-get install ed
 apt-get install texinfo
