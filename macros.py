@@ -73,6 +73,7 @@ class Invocation:
     IsInvokedWhereModifiableValueRequired: bool
     IsInvokedWhereAddressableValueRequired: bool
     IsInvokedWhereICERequired: bool
+    IsInvokedWhereConstantExpressionRequired: bool
 
     IsAnyArgumentExpandedWhereModifiableValueRequired: bool
     IsAnyArgumentExpandedWhereAddressableValueRequired: bool
