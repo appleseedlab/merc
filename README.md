@@ -23,7 +23,7 @@ apt-get install texinfo
 
 For example, if running on bc, from within the bc directory: 
 ```
-./configure
+bear -- ./configure
 bear -- make
 ```
 
