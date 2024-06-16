@@ -4,7 +4,6 @@ A Python tool for detecting and translating easy to translate C macros
 
 ## Dependencies:
 - Python 3.10
-- Bear
 - [Maki](https://github.com/appleseedlab/maki)
 
 ## Instructions for using MerC
@@ -24,7 +23,7 @@ apt-get install texinfo
 
 For example, if running on bc, from within the bc directory: 
 ```
-bear -- ./configure
+./configure
 bear -- make
 ```
 
