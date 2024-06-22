@@ -63,12 +63,14 @@ class Invocation:
     IsExpansionTypeLocalType: bool
     IsExpansionTypeDefinedAfterMacro: bool
     IsExpansionTypeVoid: bool
+    IsExpansionTypeFunctionType: bool
 
     IsAnyArgumentTypeNull: bool
     IsAnyArgumentTypeAnonymous: bool
     IsAnyArgumentTypeLocalType: bool
     IsAnyArgumentTypeDefinedAfterMacro: bool
     IsAnyArgumentTypeVoid: bool
+    IsAnyArgumentTypeFunctionType: bool
 
     IsInvokedWhereModifiableValueRequired: bool
     IsInvokedWhereAddressableValueRequired: bool
