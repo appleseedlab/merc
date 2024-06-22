@@ -58,13 +58,17 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
             can_translate_to_enum = all(
                 [i.IsICERepresentableByInt32 for i in invocations if i.IsInvokedWhereICERequired])
 
-            # If no invocations require ICE, just make it a static const variable
-            not_invoked_where_ICE_required = all([not i.IsInvokedWhereICERequired for i in invocations])
+            invoked_where_ICE_required = any([i.IsInvokedWhereICERequired for i in invocations])
+            invoked_where_constant_expression_required = \
+                any([i.IsInvokedWhereConstantExpressionRequired for i in invocations])
 
-            if not_invoked_where_ICE_required:
-                translationMap[macro] = f"static const {invocation.TypeSignature} = {macro.Body};"
-            elif can_translate_to_enum:
+            # If we're an ICE and translatable to an enum, translate to enum
+            if invoked_where_ICE_required and can_translate_to_enum:
                 translationMap[macro] = f"enum {{ {macro.Name} = {macro.Body} }};"
+            # Not a constant expression or ICE so safe to translate to a static const
+            elif not invoked_where_constant_expression_required and not invoked_where_ICE_required:
+                translationMap[macro] = f"static const {invocation.TypeSignature} = {macro.Body};"
+            # If we're here, we're a constant expression but not an ICE - can't handle
             else:
                 translationMap[macro] = None
 
