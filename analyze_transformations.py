@@ -43,6 +43,18 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
         invocation = next(iter(invocations), None)
         assert invocation is not None
 
+        # If any part of the type signature has a function pointer
+        invocation_has_function_type = \
+            any([i.IsExpansionTypeFunctionType or i.IsAnyArgumentTypeFunctionType for i in invocations])
+
+        # For now, skip translating anything with a function pointer type
+        # As clang does not output the correct C syntax for these
+        # TODO(Joey): Implement a way to translate these
+        if invocation_has_function_type:
+            logger.debug(f"Skipping {macro.Name} as it has a function pointer type")
+            translationMap[macro] = None
+            continue
+
         # Static to avoid breaking the one definition rule
         if macro.IsFunctionLike:
             # Make sure we don't return for void functions,
