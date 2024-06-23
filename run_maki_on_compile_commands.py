@@ -21,9 +21,17 @@ class CompileCommand:
 
     @staticmethod
     def from_json(json_file: dict) -> 'CompileCommand':
+
+        # compile_commands.json can either have "arguments" or "command" key
+        # We always want a list of arguments, so split command if there is no arguments list
+        if "arguments" in json_file:
+            arguments = json_file["arguments"]
+        elif "command" in json_file:
+            arguments = json_file["command"].split()
+
         return CompileCommand(
             directory=json_file["directory"],
-            arguments=json_file["arguments"],
+            arguments=arguments,
             file=json_file["file"]
         )
 
