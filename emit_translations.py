@@ -44,13 +44,25 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
         startLine = int(startDefLocParts[1]) - 1
         endLine = int(endDefLocParts[1]) - 1
 
+        endLineContent = src_file_content[endLine]
+
+        # Some code bases may define macros with an opening comment on the last line,
+        # preserve it here
+        if '/*' in endLineContent.strip() and '*/' not in endLineContent.strip():
+                endLineComment = '/*' + endLineContent.split('/*', 1)[1]
+        else:
+            endLineComment = ''
+
         for i in range(startLine, endLine + 1):
             src_file_content[i] = '\n'
 
         logger.debug(f"Translation for {src_file_path}: {translation}")
 
         # Insert the translation
-        src_file_content[startLine] = translation + '\n'
+        src_file_content[startLine] = translation
+
+        # Append the comment back to the end of the line
+        src_file_content[endLine] += endLineComment + '\n'
 
     for src_file_path, src_file_content in src_file_contents.items():
         dst_file_path = os.path.join(out_dir, os.path.relpath(src_file_path, src_dir))
