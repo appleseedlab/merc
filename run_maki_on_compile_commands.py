@@ -28,6 +28,8 @@ class CompileCommand:
             arguments = json_file["arguments"]
         elif "command" in json_file:
             arguments = json_file["command"].split()
+        else:
+            raise ValueError("Compile command must have either 'arguments' or 'command' key")
 
         return CompileCommand(
             directory=json_file["directory"],
