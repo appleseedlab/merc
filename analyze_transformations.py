@@ -137,7 +137,7 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
         elif entry["Kind"] == 'InspectedByCPP':
             pd.inspected_macro_names.add(entry["Name"])
         elif entry["Kind"] == "Include":
-            if entry["IsIncludeLocationValid"]:
+            if entry["IsValid"]:
                 pd.local_includes.add(entry["IncludeName"])
         elif entry["Kind"] == 'Invocation':
             del entry["Kind"]
