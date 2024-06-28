@@ -48,6 +48,7 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 
         # Some code bases may define macros with an opening comment on the last line,
         # preserve it here
+        # TODO(Joey): This is a really hacky way to do this, look into a parser for this.
         endLineComment = ''
         if '/*' in endLineContent.strip() and '*/' not in endLineContent.strip():
                 endLineComment = '/*' + endLineContent.split('/*', 1)[1]
