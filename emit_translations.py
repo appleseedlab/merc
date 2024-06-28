@@ -48,10 +48,9 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 
         # Some code bases may define macros with an opening comment on the last line,
         # preserve it here
+        endLineComment = ''
         if '/*' in endLineContent.strip() and '*/' not in endLineContent.strip():
                 endLineComment = '/*' + endLineContent.split('/*', 1)[1]
-        else:
-            endLineComment = ''
 
         for i in range(startLine, endLine + 1):
             src_file_content[i] = '\n'
