@@ -55,6 +55,14 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
             translationMap[macro] = None
             continue
 
+        # If body contains a DeclRefExpr and is in a header file, skip
+        invocation_has_decl_ref_expr = invocation.DoesBodyContainDeclRefExpr
+        if invocation_has_decl_ref_expr and invocation.DefinitionLocationFilename.endswith(".h"):
+            logger.debug(f"Skipping {macro.Name} as it contains a DeclRefExpr")
+            translationMap[macro] = None
+            continue
+
+
         # Static to avoid breaking the one definition rule
         if macro.IsFunctionLike:
             # Make sure we don't return for void functions,
