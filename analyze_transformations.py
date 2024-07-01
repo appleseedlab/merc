@@ -56,6 +56,7 @@ def generate_macro_translations(mm: MacroMap) -> dict[Macro, str | None]:
             continue
 
         # If body contains a DeclRefExpr and is in a header file, skip
+        # TODO(Joey/Brent): Find better way on Maki side to handle this
         invocation_has_decl_ref_expr = invocation.DoesBodyContainDeclRefExpr
         if invocation_has_decl_ref_expr and invocation.DefinitionLocationFilename.endswith(".h"):
             logger.debug(f"Skipping {macro.Name} as it contains a DeclRefExpr")
