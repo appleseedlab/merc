@@ -51,6 +51,7 @@ class Invocation:
 
     IsHygienic: bool
     IsICERepresentableByInt32: bool
+    IsICERepresentableByInt16: bool
     IsDefinitionLocationValid: bool
     IsInvocationLocationValid: bool
     IsObjectLike: bool
