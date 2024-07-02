@@ -29,10 +29,10 @@ def easy_to_transform_invocation(i: Invocation,
 def easy_to_transform_definition(m: Macro,
                                  pd: PreprocessorData,
                                  ie_invocations: Set[Invocation]):
-    return all([
+    return all(
         easy_to_transform_invocation(i, pd, ie_invocations)
         for i in pd.mm[m]
-    ])
+    )
 
 
 def generate_macro_translations(mm: MacroMap,
@@ -47,7 +47,7 @@ def generate_macro_translations(mm: MacroMap,
 
         # If any part of the type signature has a function pointer
         invocation_has_function_type = \
-            any([i.IsExpansionTypeFunctionType or i.IsAnyArgumentTypeFunctionType for i in invocations])
+            any(i.IsExpansionTypeFunctionType or i.IsAnyArgumentTypeFunctionType for i in invocations)
 
         # For now, skip translating anything with a function pointer type
         # As clang does not output the correct C syntax for these
@@ -71,13 +71,13 @@ def generate_macro_translations(mm: MacroMap,
             # to be translatable to an enum
 
             can_translate_to_enum = all(
-                    [i.CanBeTurnedIntoEnumWithIntSize(translation_config.int_size)
-                     for i in invocations if i.IsInvokedWhereICERequired]
+                    i.CanBeTurnedIntoEnumWithIntSize(translation_config.int_size)
+                    for i in invocations if i.IsInvokedWhereICERequired
                     )
 
-            invoked_where_ICE_required = any([i.IsInvokedWhereICERequired for i in invocations])
+            invoked_where_ICE_required = any(i.IsInvokedWhereICERequired for i in invocations)
             invoked_where_constant_expression_required = \
-                any([i.IsInvokedWhereConstantExpressionRequired for i in invocations])
+                any(i.IsInvokedWhereConstantExpressionRequired for i in invocations)
 
             # If we're an ICE and translatable to an enum, translate to enum
             if invoked_where_ICE_required and can_translate_to_enum:
@@ -151,7 +151,7 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
                 m = macroDefinitionLocationToMacroObject[i.DefinitionLocation]
                 # Only record unique invocations - two invocations may have the same
                 # location if they are the same nested invocation
-                if all([j.InvocationLocation != i.InvocationLocation for j in pd.mm[m]]):
+                if all(j.InvocationLocation != i.InvocationLocation for j in pd.mm[m]):
                     pd.mm[m].add(i)
 
     # src_pd only records preprocessor data about source macros
