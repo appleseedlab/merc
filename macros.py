@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Literal, Set
+from translationconfig import IntSize
 
 
 @dataclass(frozen=True)
@@ -267,6 +268,11 @@ class Invocation:
     @property
     def SatisfiesALanguageSpecificProperty(self) -> bool:
         return self.MustUseMetaprogrammingToTransform
+        
+    def CanBeTurnedIntoEnumWithIntSize(self, int_size: IntSize) -> bool:
+        return self.CanBeTurnedIntoEnum and \
+        (self.IsICERepresentableByInt32 if int_size == IntSize.Int32
+         else self.IsICERepresentableByInt16)
 
 
 MacroMap = dict[Macro, Set[Invocation]]
