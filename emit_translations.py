@@ -85,7 +85,7 @@ def main():
                     help='Enable verbose logging')
 
     # Translation args
-    ap.add_argument('--int-size', type=int, choices=list(IntSize), default=IntSize.Int32,
+    ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
                     help='Size of int type in bits')
 
     args = ap.parse_args()
