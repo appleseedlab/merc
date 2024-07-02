@@ -5,11 +5,12 @@ import logging
 import os
 
 from analyze_transformations import Macro, get_interface_equivalent_translations
+from translationconfig import TranslationConfig, IntSize
 
 logger = logging.getLogger(__name__)
 
 
-def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, str]) -> None:
+def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, str | None]) -> None:
     # dict of src files to their contents in lines
     src_file_contents: dict[str, list[str]] = {}
     for macro, translation in translations.items():
@@ -82,16 +83,25 @@ def main():
                     help='Output directory for translated source files.')
     ap.add_argument('-v', '--verbose', action='store_true',
                     help='Enable verbose logging')
+
+    # Translation args
+    ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
+                    help='Size of int type in bits')
+
     args = ap.parse_args()
 
     input_src_dir = os.path.abspath(args.input_src_dir)
     maki_analysis_path = os.path.abspath(args.maki_analysis_file)
     output_translation_dir = args.output_translation_dir
 
+    translation_config = TranslationConfig.from_args(args)
+
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level)
 
-    translations = get_interface_equivalent_translations(maki_analysis_path)
+    translations = get_interface_equivalent_translations(maki_analysis_path,
+                                                         translation_config)
+
     translate_src_files(input_src_dir, output_translation_dir, translations)
 
 
