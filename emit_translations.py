@@ -4,7 +4,8 @@ import argparse
 import logging
 import os
 
-from analyze_transformations import Macro, get_interface_equivalent_translations
+from analyze_transformations import Macro, get_interface_equivalent_preprocessordata
+from macrotranslator import MacroTranslator
 from translationconfig import TranslationConfig, IntSize
 
 logger = logging.getLogger(__name__)
@@ -99,8 +100,9 @@ def main():
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level)
 
-    translations = get_interface_equivalent_translations(maki_analysis_path,
-                                                         translation_config)
+    ie_pd = get_interface_equivalent_preprocessordata(maki_analysis_path)
+    translator = MacroTranslator(translation_config)
+    translations = translator.generate_macro_translations(ie_pd.mm)
 
     translate_src_files(input_src_dir, output_translation_dir, translations)
 
