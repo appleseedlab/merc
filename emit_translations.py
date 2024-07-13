@@ -106,6 +106,8 @@ def main():
 
     translate_src_files(input_src_dir, output_translation_dir, translations)
 
+    print(translator.translation_stats)
+
 
 if __name__ == '__main__':
     main()
