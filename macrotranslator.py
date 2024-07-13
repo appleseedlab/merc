@@ -56,10 +56,10 @@ class MacroTranslator:
     def translate_function_like_macro(self, macro: Macro, invocations: set[Invocation]) -> str:
         # Make sure we don't return for void functions,
         # but do return for void * and anything else
-        pattern = r"void(?!\s*\*)"
-
         invocation = next(iter(invocations))
-        returnStatement = "return" if not re.match(pattern, invocation.TypeSignature) else ""
+        is_void = invocation.IsExpansionTypeVoid
+
+        returnStatement = "return" if not is_void else ""
         return f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}"
 
     def translate_object_like_macro(self, macro: Macro, invocations: set[Invocation]) -> str | None:
