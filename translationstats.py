@@ -28,13 +28,13 @@ class ObjectLikeStats:
 
     skipped_stats: SkipStats = field(default_factory=SkipStats)
 
-    # We couldn't handle an object-like macro
-    # being invoked where an ICE is required
     untranslatable_constant_expr: int = 0
+    untranslatable_enum_size: int = 0
 
     @property
     def total_skipped(self) -> int:
-        return self.skipped_stats.total_skipped + self.untranslatable_constant_expr
+        return self.skipped_stats.total_skipped + self.untranslatable_constant_expr \
+                + self.untranslatable_enum_size
 
     def __str__(self) -> str:
         return (
@@ -44,6 +44,7 @@ class ObjectLikeStats:
                 f"    - Translated to static const: {self.translated_to_static_const}\n"
                 f"  - Total skipped: {self.total_skipped}\n"
                 f"{indent(str(self.skipped_stats), '    ')}\n"
+                f"    - Untranslatable because enum size too small to represent ICE: {self.untranslatable_enum_size}\n"
                 f"    - Untranslatable constant expressions: {self.untranslatable_constant_expr}"
                 )
 
