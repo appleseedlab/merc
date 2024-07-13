@@ -11,7 +11,6 @@ from predicates.declaration_altering import da_invocation
 from predicates.interface_equivalent import ie_def
 from predicates.metaprogramming import mp_invocation
 from predicates.thunkizing import thunkizing_invocation
-from translationconfig import TranslationConfig
 
 logger = logging.getLogger(__name__)
 
