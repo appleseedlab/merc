@@ -87,11 +87,16 @@ class MacroTranslator:
             any(i.IsInvokedWhereConstantExpressionRequired for i in invocations)
 
         # If we're an ICE and translatable to an enum, translate to enum
-        if invoked_where_ICE_required and can_translate_to_enum:
-            return f"enum {{ {macro.Name} = {macro.Body} }};"
-        # Not a constant expression or ICE so safe to translate to a static const
-        elif not invoked_where_constant_expression_required and not invoked_where_ICE_required:
+        if invoked_where_ICE_required:
+            if can_translate_to_enum:
+                return f"enum {{ {macro.Name} = {macro.Body} }};"
+            else:
+                # Can't fit into an enum
+                return None
+
+        # Not a constant expression (or ICE) so safe to translate to a static const
+        if not invoked_where_constant_expression_required:
             return f"static const {invocation.TypeSignature} = {macro.Body};"
-        # If we're here, we're a constant expression but not an ICE - can't handle
+        # We're a constant expression but not an ICE - can't handle
         else:
             return None
