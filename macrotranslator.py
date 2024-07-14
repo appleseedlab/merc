@@ -21,7 +21,7 @@ class MacroTranslator:
 
     def get_macro_translation(self, macro: Macro, invocations: set[Invocation]) -> str | None:
 
-        if self.should_skip_macro(macro, invocations):
+        if self.should_skip_due_to_technical_limitations(macro, invocations):
             return None
 
         if macro.IsFunctionLike:
@@ -29,7 +29,17 @@ class MacroTranslator:
         elif macro.IsObjectLike:
             return self.translate_object_like_macro(macro, invocations)
 
-    def should_skip_macro(self, macro: Macro, invocations: set[Invocation]) -> bool:
+    def should_skip_due_to_technical_limitations(self, macro: Macro, invocations: set[Invocation]) -> bool:
+        """
+        Skips are due to technical limitations of Maki and MerC and not
+        due to irreconcilable differences in macro and C semantics.
+
+        These skips are subject to removal as Maki and MerC are improved.
+
+        Skips due to differences in macro and C semantics
+        are handled by predicates.interface_equivalent.ie_def
+        """
+
         # For now, skip translating anything with a function pointer type
         # As Maki does not output the correct C syntax for these
 
