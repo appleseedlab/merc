@@ -111,9 +111,16 @@ class TranslationRecords:
             writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
             writer.writerow(["Macro", "Action", "Translation", "Type"])
 
-            for record in self.translation_records:
-                writer.writerow([record.macro.Name, "Translated", record.macro_translation, record.translation_type])
+            for translation_record in self.translation_records:
+                writer.writerow([translation_record.macro.Name,
+                                 "Translated",
+                                 translation_record.macro_translation,
+                                 translation_record.translation_type]
+                                )
 
-            for record in self.skip_records:
-                writer.writerow([record.macro.Name, "Skipped", "", record.skip_type])
-
+            for skip_record in self.skip_records:
+                writer.writerow([skip_record.macro.Name,
+                                 "Skipped",
+                                 "",
+                                 skip_record.skip_type]
+                                )
