@@ -1,8 +1,7 @@
 from macros import MacroMap, Macro, Invocation
 from translationconfig import TranslationConfig
 import logging
-import re
-from translationstats import MacroType, TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
+from translationstats import TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
 from translationstats import TranslationType
 from translationstats import SkipType
 

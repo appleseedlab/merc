@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from collections import Counter
-import sys
 import csv
 from macros import Macro
 from enum import Enum
