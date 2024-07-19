@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from collections import Counter
 import sys
+import csv
 from macros import Macro
 
 # 3.10 compatibility
@@ -108,9 +109,15 @@ class TranslationRecords:
         print(f"  - Total skipped: {self.total_skipped_by_type(MacroType.FUNCTION_LIKE)}")
         print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.FUNCTION_LIKE,SkipType.DEFINITION_HAS_FUNCTION_POINTER)]}")
         print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.FUNCTION_LIKE,SkipType.BODY_CONTAINS_DECL_REF_EXPR)]}")
+    
+    def output_csv(self, filename: str):
+        with open(filename, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
+            writer.writerow(["Macro", "Action", "Translation", "Type"])
 
+            for record in self.translation_records:
+                writer.writerow([record.macro.Name, "Translated", record.macro_translation, record.translation_type])
 
-
-
-
+            for record in self.skip_records:
+                writer.writerow([record.macro.Name, "Skipped", "", record.skip_type])
 
