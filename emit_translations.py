@@ -4,7 +4,8 @@ import argparse
 import logging
 import os
 
-from analyze_transformations import Macro, get_interface_equivalent_preprocessordata
+from analyze_transformations import get_interface_equivalent_preprocessordata
+from macros import Macro
 from macrotranslator import MacroTranslator
 from translationconfig import TranslationConfig, IntSize
 
@@ -84,6 +85,8 @@ def main():
                     help='Output directory for translated source files.')
     ap.add_argument('-v', '--verbose', action='store_true',
                     help='Enable verbose logging')
+    ap.add_argument('--output-csv', type=str, required=False,
+                    help='Output the macro translations to a CSV file.')
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -105,6 +108,11 @@ def main():
     translations = translator.generate_macro_translations(ie_pd.mm)
 
     translate_src_files(input_src_dir, output_translation_dir, translations)
+
+    translator.translation_stats.print_totals()
+    if args.output_csv:
+        path = os.path.abspath(args.output_csv)
+        translator.translation_stats.output_csv(path)
 
 
 if __name__ == '__main__':
