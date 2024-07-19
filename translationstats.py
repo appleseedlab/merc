@@ -3,13 +3,10 @@ from collections import Counter
 import sys
 import csv
 from macros import Macro
+from enum import Enum
 
-# 3.10 compatibility
-if sys.version_info <= (3, 10):
-    from enum import Enum
-    class StrEnum(str, Enum): pass
-else:
-    from enum import StrEnum
+# 3.10 compatibility for StrEnum
+class StrEnum(str, Enum): pass 
 
 class MacroType(StrEnum):
     """
