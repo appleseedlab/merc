@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import pathlib
 
 from analyze_transformations import get_interface_equivalent_preprocessordata
 from macros import Macro
@@ -77,15 +78,15 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument('-i', '--input_src_dir', type=str, required=True,
+    ap.add_argument('-i', '--input_src_dir', type=pathlib.Path, required=True,
                     help='Path to the program source directory')
-    ap.add_argument('-m', '--maki_analysis_file', type=str, required=True,
+    ap.add_argument('-m', '--maki_analysis_file', type=pathlib.Path, required=True,
                     help='Path to the maki analysis file.')
-    ap.add_argument('-o', '--output_translation_dir', type=str, required=True,
+    ap.add_argument('-o', '--output_translation_dir', type=pathlib.Path, required=True,
                     help='Output directory for translated source files.')
     ap.add_argument('-v', '--verbose', action='store_true',
                     help='Enable verbose logging')
-    ap.add_argument('--output-csv', type=str, required=False,
+    ap.add_argument('--output-csv', type=pathlib.Path, required=False,
                     help='Output the macro translations to a CSV file.')
 
     # Translation args
