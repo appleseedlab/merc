@@ -3,8 +3,10 @@
 import argparse
 import logging
 import os
+import pathlib
 
-from analyze_transformations import Macro, get_interface_equivalent_preprocessordata
+from analyze_transformations import get_interface_equivalent_preprocessordata
+from macros import Macro
 from macrotranslator import MacroTranslator
 from translationconfig import TranslationConfig, IntSize
 
@@ -76,14 +78,16 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
 def main():
     ap = argparse.ArgumentParser()
 
-    ap.add_argument('-i', '--input_src_dir', type=str, required=True,
+    ap.add_argument('-i', '--input_src_dir', type=pathlib.Path, required=True,
                     help='Path to the program source directory')
-    ap.add_argument('-m', '--maki_analysis_file', type=str, required=True,
+    ap.add_argument('-m', '--maki_analysis_file', type=pathlib.Path, required=True,
                     help='Path to the maki analysis file.')
-    ap.add_argument('-o', '--output_translation_dir', type=str, required=True,
+    ap.add_argument('-o', '--output_translation_dir', type=pathlib.Path, required=True,
                     help='Output directory for translated source files.')
     ap.add_argument('-v', '--verbose', action='store_true',
                     help='Enable verbose logging')
+    ap.add_argument('--output-csv', type=pathlib.Path, required=False,
+                    help='Output the macro translations to a CSV file.')
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -105,6 +109,11 @@ def main():
     translations = translator.generate_macro_translations(ie_pd.mm)
 
     translate_src_files(input_src_dir, output_translation_dir, translations)
+
+    translator.translation_stats.print_totals()
+    if args.output_csv:
+        path = os.path.abspath(args.output_csv)
+        translator.translation_stats.output_csv(path)
 
 
 if __name__ == '__main__':
