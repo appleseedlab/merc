@@ -82,13 +82,14 @@ class MacroTranslator:
         return None
 
     def translate_function_like_macro(self, macro: Macro, invocations: set[Invocation]) -> TranslationRecord:
-        # Make sure we don't return for void functions,
-        # but do return for void * and anything else
         invocation = next(iter(invocations))
-        is_void = invocation.IsExpansionTypeVoid
+
+        # Determine if we return or not - can't return a statement
+        is_void = invocation.IsExpansionTypeVoid and invocation.IsStatement
+        returnStatement = "return" if not is_void else ""
+
         translation_type = TranslationType.NON_VOID if not is_void else TranslationType.VOID
 
-        returnStatement = "return" if not is_void else ""
         translation = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}"
         return TranslationRecord(macro, translation, translation_type)
 
