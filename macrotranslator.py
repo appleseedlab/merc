@@ -84,8 +84,8 @@ class MacroTranslator:
     def translate_function_like_macro(self, macro: Macro, invocations: set[Invocation]) -> TranslationRecord:
         invocation = next(iter(invocations))
 
-        # Determine if we return or not - can't return a statement
-        is_void = invocation.IsExpansionTypeVoid and invocation.IsStatement
+        # Determine if we return or not
+        is_void = invocation.IsExpansionTypeVoid or invocation.IsStatement
         returnStatement = "return" if not is_void else ""
 
         translation_type = TranslationType.NON_VOID if not is_void else TranslationType.VOID
