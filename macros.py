@@ -269,6 +269,14 @@ class Invocation:
     def SatisfiesALanguageSpecificProperty(self) -> bool:
         return self.MustUseMetaprogrammingToTransform
         
+    @property
+    def IsExpression(self) -> bool:
+        return self.ASTKind == 'Expr'
+
+    @property
+    def IsStatement(self) -> bool:
+        return self.ASTKind == 'Stmt'
+
     def CanBeTurnedIntoEnumWithIntSize(self, int_size: IntSize) -> bool:
         return self.CanBeTurnedIntoEnum and \
         (self.IsICERepresentableByInt32 if int_size == IntSize.Int32
