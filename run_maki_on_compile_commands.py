@@ -73,6 +73,9 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[d
         logger.exception(f"Error running maki with args {args} on {cc.file}: {e}")
         return []
 
+def is_source_file(arg: str) -> bool:
+    return arg.endswith('.c')
+
 def split_compile_commands_by_src_file(cc: CompileCommand) -> list[CompileCommand]:
     """
     Take a compile command and split it into multiple compile commands
@@ -80,12 +83,12 @@ def split_compile_commands_by_src_file(cc: CompileCommand) -> list[CompileComman
     """
 
     # Filter out all source files from the arguments
-    arguments_no_src_files = [arg for arg in cc.arguments if not arg.endswith('.c')]
+    arguments_no_src_files = [arg for arg in cc.arguments if not is_source_file(arg)]
 
     # Return a list of CompileCommands for each source file in the original compile command args
     return [
         CompileCommand(directory=cc.directory, arguments=arguments_no_src_files, file=src_file)
-        for src_file in cc.arguments if src_file.endswith('.c')
+        for src_file in cc.arguments if is_source_file(src_file)
     ]
     
 
