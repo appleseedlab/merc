@@ -38,13 +38,13 @@ class CompileCommand:
         )
 
 
-def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> dict[str, Any]:
+def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[dict[str, Any]]:
 
-    args = cc.arguments
     # pass cpp2c plugin shared library file
-    args[0] = "/usr/bin/clang-17"
+    args = cc.arguments
+    args[0] = "clang-17"
     args.insert(1, f'-fplugin={maki_so_path}')
-    args[-1] = cc.file
+    args.append(cc.file)
     # at the very end, specify that we are only doing syntactic analysis
     # so as to not waste time compiling
     args.append('-fsyntax-only')
@@ -71,8 +71,26 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> dict[s
         return json.loads(process.stdout.decode())
     except subprocess.CalledProcessError as e:
         logger.exception(f"Error running maki with args {args} on {cc.file}: {e}")
-        return {}
+        return []
 
+def is_source_file(arg: str) -> bool:
+    return arg.endswith('.c')
+
+def split_compile_commands_by_src_file(cc: CompileCommand) -> list[CompileCommand]:
+    """
+    Take a compile command and split it into multiple compile commands
+    for each source file in the compile command
+    """
+
+    # Filter out all source files from the arguments
+    arguments_no_src_files = [arg for arg in cc.arguments if not is_source_file(arg)]
+
+    # Return a list of CompileCommands for each source file in the original compile command args
+    return [
+        CompileCommand(directory=cc.directory, arguments=arguments_no_src_files, file=src_file)
+        for src_file in cc.arguments if is_source_file(src_file)
+    ]
+    
 
 def main():
     ap = argparse.ArgumentParser()
@@ -108,13 +126,16 @@ def main():
 
     compile_commands = [CompileCommand.from_json(cc) for cc in compile_commands]
 
+    # Split compile commands into multiple compile commands for each source file
+    split_compile_commands = [split_cc for cc in compile_commands 
+                           for split_cc in split_compile_commands_by_src_file(cc)]
 
     # Run maki on each compile command threaded
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_jobs) as executor:
         results = list(
             executor.map(
                 partial(run_maki_on_compile_command, maki_so_path=plugin_path),
-                compile_commands
+                split_compile_commands
             )
         )
 
