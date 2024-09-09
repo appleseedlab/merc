@@ -40,7 +40,7 @@ class MacroTranslator:
         if translation_target is not None:
             skip_reason = self.should_skip_due_to_technical_limitations(macro, invocations)
             if skip_reason:
-                return SkipRecord(macro, skip_reason)
+                return SkipRecord(macro, invocations, skip_reason)
 
         match translation_target:
             case TranslationTarget.VOID_FUNCTION:
@@ -52,7 +52,7 @@ class MacroTranslator:
             case TranslationTarget.ENUM:
                 return self.translate_macro_to_enum(macro, invocations)
             case None:
-                return SkipRecord(macro, ie_result)
+                return SkipRecord(macro, invocations, ie_result)
 
     def should_skip_due_to_technical_limitations(self, macro: Macro, invocations: set[Invocation]) -> TechnicalSkip | None:
         """
@@ -92,20 +92,20 @@ class MacroTranslator:
         invocation = next(iter(invocations))
 
         translation = f"static inline {invocation.TypeSignature} {{ {macro.Body}; }}"
-        return TranslationRecord(macro, translation, TranslationTarget.VOID_FUNCTION)
+        return TranslationRecord(macro, invocations, translation, TranslationTarget.VOID_FUNCTION)
     
     def translate_macro_to_non_void_function(self, macro: Macro, invocations: set[Invocation]) -> TranslationRecord:
         invocation = next(iter(invocations))
 
         translation = f"static inline {invocation.TypeSignature} {{ return {macro.Body}; }}"
-        return TranslationRecord(macro, translation, TranslationTarget.NON_VOID_FUNCTION)
+        return TranslationRecord(macro, invocations, translation, TranslationTarget.NON_VOID_FUNCTION)
 
     def translate_macro_to_global_variable(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
         invocation = next(iter(invocations))
 
         translation = f"static const {invocation.TypeSignature} = {macro.Body};"
-        return TranslationRecord(macro, translation, TranslationTarget.GLOBAL_VARIABLE)
+        return TranslationRecord(macro, invocations, translation, TranslationTarget.GLOBAL_VARIABLE)
 
     def translate_macro_to_enum(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
         translation = f"enum {{ {macro.Name} = {macro.Body} }};"
-        return TranslationRecord(macro, translation, TranslationTarget.ENUM)
+        return TranslationRecord(macro, invocations, translation, TranslationTarget.ENUM)

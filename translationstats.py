@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from predicates.interface_equivalent import IEResult, TranslationTarget
 from collections import Counter
 import csv
-from macros import Macro
+from macros import Macro, Invocation
 from enum import Enum, auto
 
 
@@ -23,6 +23,7 @@ class MacroRecord:
     Base class for all macro records
     """
     macro: Macro
+    invocations: set[Invocation]
 
 SkipType = TechnicalSkip | IEResult
 
