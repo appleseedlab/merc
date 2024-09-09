@@ -1,78 +1,67 @@
-from macros import Macro, PreprocessorData
+from macros import Invocation, Macro, PreprocessorData
+from enum import Enum, auto
 
+class IEResult(Enum):
+    VALID = auto()
+    NO_SEMANTIC_DATA = auto()
+    MACRO_NEVER_EXPANDED = auto()
+    INVOCATIONS_HAVE_DIFFERENT_TYPE_SIGNATURES = auto()
+    NOT_DEFINED_AT_GLOBAL_SCOPE = auto()
+    LACKS_SEMANTIC_DATA = auto()
+    CANNOT_TRANSFORM = auto()
 
-def ie_def(m: Macro, pd: PreprocessorData) -> bool:
+    MUST_USE_METAPROGRAMMING = auto()
+    THUNKIZING = auto()
+    CALLSITE_CONTEXT_ALTERING = auto()
+    CALLING_CONVENTION_ADAPTING = auto()
+    SCOPE_ADAPTING = auto()
+
+def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
     is_ = pd.mm[m]
     # We only analyze top-level non-argument invocations
     assert all([i.IsTopLevelNonArgument for i in is_])
     # We must have semantic data for all invocations
     if not all([i.HasSemanticData for i in is_]):
-        return False
+        return IEResult.NO_SEMANTIC_DATA
     # The macro must be expanded at least once
     if len(is_) == 0:
-        return False
+        return IEResult.MACRO_NEVER_EXPANDED
     # All invocations must have the same type signature
     if len(set([i.TypeSignature for i in is_])) != 1:
-        return False
+        return IEResult.INVOCATIONS_HAVE_DIFFERENT_TYPE_SIGNATURES
     # The macro must be defined at global scope
     if not m.IsDefinedAtGlobalScope:
-        return False
-    return (
-        (m.IsObjectLike and all([
-            all([
-                # Valid for analysis
-                i.HasSemanticData,
+        return IEResult.NOT_DEFINED_AT_GLOBAL_SCOPE
 
+                # Valid for analysis
+    def check_conditions(i: Invocation):
+        CONDITIONS = [
+                # Valid for analysis
+                (i.HasSemanticData, IEResult.LACKS_SEMANTIC_DATA), 
                 # Can be turn into an enum or variable
-                i.IsObjectLike,
-                i.CanBeTurnedIntoEnumOrVariable,
-
+                (i.CanBeTurnedIntoEnumOrVariable if m.IsObjectLike else i.CanBeTurnedIntoFunction, IEResult.CANNOT_TRANSFORM),
                 # Argument-altering
-                not i.MustAlterArgumentsOrReturnTypeToTransform,
-
+                (not i.MustAlterArgumentsOrReturnTypeToTransform, IEResult.CALLING_CONVENTION_ADAPTING),
                 # Declaration-altering
-                i.DefinitionLocationFilename not in pd.local_includes,
-                i.Name not in pd.inspected_macro_names,
-                not i.IsNamePresentInCPPConditional,
-                not i.MustAlterDeclarationsToTransform,
-
+                (i.DefinitionLocationFilename not in pd.local_includes, IEResult.SCOPE_ADAPTING),
+                (i.Name not in pd.inspected_macro_names, IEResult.SCOPE_ADAPTING),
+                (not i.IsNamePresentInCPPConditional, IEResult.SCOPE_ADAPTING),
+                (not i.MustAlterDeclarationsToTransform, IEResult.SCOPE_ADAPTING),
                 # Call-site-context-altering
-                not i.MustAlterCallSiteToTransform,
-
+                (not i.MustAlterCallSiteToTransform, IEResult.CALLSITE_CONTEXT_ALTERING),
                 # Thunkizing
-                not i.MustCreateThunksToTransform,
+                (not i.MustCreateThunksToTransform, IEResult.THUNKIZING),
+                (not i.MustUseMetaprogrammingToTransform, IEResult.MUST_USE_METAPROGRAMMING)
+                ]
+        for condition, result in CONDITIONS:
+            if not condition:
+                return result
+        return None
 
-                # Metaprogramming
-                not i.MustUseMetaprogrammingToTransform
-            ])
-            for i in is_
-        ])) or
-        (m.IsFunctionLike and all([
-            all([
-                # Valid for analysis
-                i.HasSemanticData,
+    for i in is_:
+        result = check_conditions(i)
+        if result:
+            return result
 
-                # Can be turned into a function
-                i.IsFunctionLike,
-                i.CanBeTurnedIntoFunction,
-
-                # Argument-altering
-                not i.MustAlterArgumentsOrReturnTypeToTransform,
-
-                # Declaration-altering
-                i.DefinitionLocationFilename not in pd.local_includes,
-                i.Name not in pd.inspected_macro_names,
-                not i.IsNamePresentInCPPConditional,
-                not i.MustAlterDeclarationsToTransform,
-
-                # Call-site-context-altering
-                not i.MustAlterCallSiteToTransform,
-
-                # Thunkizing
-                not i.MustCreateThunksToTransform,
-
-                # Metaprogramming
-                not i.MustUseMetaprogrammingToTransform
-            ])
-            for i in is_
-        ])))
+    return IEResult.VALID
+    

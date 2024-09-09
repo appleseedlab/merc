@@ -5,7 +5,7 @@ import logging
 import os
 import pathlib
 
-from analyze_transformations import get_interface_equivalent_preprocessordata
+from analyze_transformations import get_tlna_src_preprocessordata
 from macros import Macro
 from macrotranslator import MacroTranslator
 from translationconfig import TranslationConfig, IntSize
@@ -104,9 +104,9 @@ def main():
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level)
 
-    ie_pd = get_interface_equivalent_preprocessordata(maki_analysis_path)
+    tlna_src_pd = get_tlna_src_preprocessordata(maki_analysis_path)
     translator = MacroTranslator(translation_config)
-    translations = translator.generate_macro_translations(ie_pd.mm)
+    translations = translator.generate_macro_translations(tlna_src_pd)
 
     translate_src_files(input_src_dir, output_translation_dir, translations)
 

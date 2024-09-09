@@ -1,9 +1,11 @@
-from macros import MacroMap, Macro, Invocation
+from macros import MacroMap, Macro, Invocation, PreprocessorData
 from translationconfig import TranslationConfig
 import logging
+import re
 from translationstats import TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
 from translationstats import TranslationType
 from translationstats import SkipType
+import predicates.interface_equivalent
 
 
 logger = logging.getLogger(__name__)
@@ -15,12 +17,12 @@ class MacroTranslator:
         self.translation_stats = TranslationRecords()
 
     def generate_macro_translations(self,
-                                    mm: MacroMap) -> dict[Macro, str | None]:
+                                    pd: PreprocessorData) -> dict[Macro, str | None]:
         translationMap: dict[Macro, str | None] = {}
 
 
-        for macro, invocations in mm.items():
-            record = self.get_macro_record(macro, invocations)
+        for macro, invocations in pd.mm.items():
+            record = self.get_macro_record(macro, invocations, pd)
             if isinstance(record, TranslationRecord):
                 self.translation_stats.add_translation_record(record)
             elif isinstance(record, SkipRecord):
@@ -34,12 +36,16 @@ class MacroTranslator:
 
         return translationMap
 
-    def get_macro_record(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
+    def get_macro_record(self, macro: Macro, invocations: set[Invocation], pd: PreprocessorData) -> MacroRecord:
+        ie_result = predicates.interface_equivalent.ie_def(macro, pd)
+        if  ie_result != predicates.interface_equivalent.IEResult.VALID:
+            return SkipRecord(macro, SkipType.NOT_INTERFACE_EQUIVALENT, ie_result)
 
 
         skip_reason = self.should_skip_due_to_technical_limitations(macro, invocations)
         if skip_reason:
             return SkipRecord(macro, skip_reason)
+        
 
         if macro.IsFunctionLike:
             return self.translate_function_like_macro(macro, invocations)

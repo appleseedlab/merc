@@ -2,7 +2,6 @@ import json
 from typing import Set, Any
 import logging
 from collections import Counter
-import re
 
 from macros import Macro, MacroMap, PreprocessorData, Invocation
 from predicates.argument_altering import aa_invocation
@@ -49,7 +48,7 @@ def filter_definitions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     return filtered_entries
 
-def get_interface_equivalent_preprocessordata(results_file: str) -> PreprocessorData:
+def get_tlna_src_preprocessordata(results_file: str) -> PreprocessorData:
 
     with open(results_file) as fp:
         entries = json.load(fp)
@@ -114,11 +113,5 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
 
     # ie_pd only records preprocessor data about interface-equivalent
     # macros
-    ie_pd = PreprocessorData(
-        {m: is_ for m, is_ in tlna_src_pd.mm.items()
-         if ie_def(m, tlna_src_pd)},
-        tlna_src_pd.inspected_macro_names,
-        tlna_src_pd.local_includes
-    )
 
-    return ie_pd
+    return tlna_src_pd
