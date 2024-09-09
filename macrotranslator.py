@@ -1,7 +1,6 @@
 from macros import MacroMap, Macro, Invocation, PreprocessorData
 from translationconfig import TranslationConfig
 import logging
-import re
 from translationstats import TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
 from translationstats import TranslationType
 from translationstats import SkipType
@@ -39,12 +38,12 @@ class MacroTranslator:
     def get_macro_record(self, macro: Macro, invocations: set[Invocation], pd: PreprocessorData) -> MacroRecord:
         ie_result = predicates.interface_equivalent.ie_def(macro, pd)
         if  ie_result != predicates.interface_equivalent.IEResult.VALID:
-            return SkipRecord(macro, SkipType.NOT_INTERFACE_EQUIVALENT, ie_result)
+            return SkipRecord(macro, invocations, SkipType.NOT_INTERFACE_EQUIVALENT, ie_result)
 
 
         skip_reason = self.should_skip_due_to_technical_limitations(macro, invocations)
         if skip_reason:
-            return SkipRecord(macro, skip_reason)
+            return SkipRecord(macro, invocations, skip_reason)
         
 
         if macro.IsFunctionLike:
@@ -97,7 +96,7 @@ class MacroTranslator:
         translation_type = TranslationType.NON_VOID if not is_void else TranslationType.VOID
 
         translation = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}"
-        return TranslationRecord(macro, translation, translation_type)
+        return TranslationRecord(macro, invocations, translation, translation_type)
 
     def translate_object_like_macro(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
         invocation = next(iter(invocations))
@@ -117,15 +116,15 @@ class MacroTranslator:
         if invoked_where_ICE_required:
             if can_translate_to_enum:
                 translation = f"enum {{ {macro.Name} = {macro.Body} }};"
-                return TranslationRecord(macro, translation, TranslationType.ENUM)
+                return TranslationRecord(macro, invocations, translation, TranslationType.ENUM)
             else:
                 # Can't fit into an enum
-                return SkipRecord(macro, SkipType.CANT_FIT_ICE_IN_ENUM_SIZE)
+                return SkipRecord(macro, invocations, SkipType.CANT_FIT_ICE_IN_ENUM_SIZE)
 
         # Not a constant expression (or ICE) so safe to translate to a static const
         if not invoked_where_constant_expression_required:
             translation = f"static const {invocation.TypeSignature} = {macro.Body};"
-            return TranslationRecord(macro, translation, TranslationType.CONST_STATIC)
+            return TranslationRecord(macro, invocations, translation, TranslationType.CONST_STATIC)
         # We're a constant expression but not an ICE - can't handle
         else:
-            return SkipRecord(macro, SkipType.INVOCATION_REQUIRES_CONSTANT_EXPRESSION)
+            return SkipRecord(macro, invocations, SkipType.INVOCATION_REQUIRES_CONSTANT_EXPRESSION)

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from predicates.interface_equivalent import IEResult
 from collections import Counter
 import csv
-from macros import Macro
+from macros import Macro, Invocation
 from enum import Enum
 
 # 3.10 compatibility for StrEnum
@@ -40,6 +40,7 @@ class MacroRecord:
     Base class for all macro records
     """
     macro: Macro
+    invocations: set[Invocation]
 
 @dataclass(slots=True)
 class SkipRecord(MacroRecord):
