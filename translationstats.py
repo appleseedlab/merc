@@ -105,14 +105,15 @@ class TranslationRecords:
     def output_csv(self, filename: str):
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(["Macro", "Macro Type", "Action", "Translation", "Action Type"])
+            writer.writerow(["Macro", "Macro Type", "Action", "Translation", "Action Type", "Invocation Amount"])
 
             for translation_record in self.translation_records:
                 writer.writerow([translation_record.macro.Name,
                                  self._get_macro_type(translation_record.macro),
                                  "Translated",
                                  translation_record.macro_translation,
-                                 translation_record.translation_type]
+                                 translation_record.translation_type,
+                                 len(translation_record.invocations)]
                                 )
 
             for skip_record in self.skip_records:
