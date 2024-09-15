@@ -111,7 +111,5 @@ def get_tlna_src_preprocessordata(results_file: str) -> PreprocessorData:
         src_pd.local_includes
     )
 
-    # ie_pd only records preprocessor data about interface-equivalent
-    # macros
 
     return tlna_src_pd
