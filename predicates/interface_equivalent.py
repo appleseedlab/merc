@@ -10,11 +10,11 @@ class IEResult(Enum):
     LACKS_SEMANTIC_DATA = auto()
     CANNOT_TRANSFORM = auto()
 
-    MUST_USE_METAPROGRAMMING = auto()
+    USE_METAPROGRAMMING = auto()
     THUNKIZING = auto()
     CALLSITE_CONTEXT_ALTERING = auto()
-    CALLING_CONVENTION_ADAPTING = auto()
-    SCOPE_ADAPTING = auto()
+    CALLED_BY_NAME = auto()
+    DYNAMICALLY_SCOPED = auto()
 
 def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
     is_ = pd.mm[m]
@@ -33,7 +33,6 @@ def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
     if not m.IsDefinedAtGlobalScope:
         return IEResult.NOT_DEFINED_AT_GLOBAL_SCOPE
 
-                # Valid for analysis
     def check_conditions(i: Invocation):
         CONDITIONS = [
                 # Valid for analysis
@@ -41,17 +40,17 @@ def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
                 # Can be turn into an enum or variable
                 (i.CanBeTurnedIntoEnumOrVariable if m.IsObjectLike else i.CanBeTurnedIntoFunction, IEResult.CANNOT_TRANSFORM),
                 # Argument-altering
-                (not i.MustAlterArgumentsOrReturnTypeToTransform, IEResult.CALLING_CONVENTION_ADAPTING),
+                (not i.MustAlterArgumentsOrReturnTypeToTransform, IEResult.CALLED_BY_NAME),
                 # Declaration-altering
-                (i.DefinitionLocationFilename not in pd.local_includes, IEResult.SCOPE_ADAPTING),
-                (i.Name not in pd.inspected_macro_names, IEResult.SCOPE_ADAPTING),
-                (not i.IsNamePresentInCPPConditional, IEResult.SCOPE_ADAPTING),
-                (not i.MustAlterDeclarationsToTransform, IEResult.SCOPE_ADAPTING),
+                (i.DefinitionLocationFilename not in pd.local_includes, IEResult.DYNAMICALLY_SCOPED),
+                (i.Name not in pd.inspected_macro_names, IEResult.DYNAMICALLY_SCOPED),
+                (not i.IsNamePresentInCPPConditional, IEResult.DYNAMICALLY_SCOPED),
+                (not i.MustAlterDeclarationsToTransform, IEResult.DYNAMICALLY_SCOPED),
                 # Call-site-context-altering
                 (not i.MustAlterCallSiteToTransform, IEResult.CALLSITE_CONTEXT_ALTERING),
                 # Thunkizing
                 (not i.MustCreateThunksToTransform, IEResult.THUNKIZING),
-                (not i.MustUseMetaprogrammingToTransform, IEResult.MUST_USE_METAPROGRAMMING)
+                (not i.MustUseMetaprogrammingToTransform, IEResult.USE_METAPROGRAMMING)
                 ]
         for condition, result in CONDITIONS:
             if not condition:
