@@ -88,6 +88,8 @@ def main():
                     help='Enable verbose logging')
     ap.add_argument('--output-csv', type=pathlib.Path, required=False,
                     help='Output the macro translations to a CSV file.')
+    ap.add_argument('--program-name', type=pathlib.Path, required=False, default='',
+                    help='Name of the program being translated. Used in the CSV output.')
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -113,7 +115,8 @@ def main():
     translator.translation_stats.print_totals()
     if args.output_csv:
         path = os.path.abspath(args.output_csv)
-        translator.translation_stats.output_csv(path)
+        program_name = args.program_name
+        translator.translation_stats.output_csv(path, program_name)
 
 
 if __name__ == '__main__':
