@@ -202,10 +202,7 @@ class Invocation:
             return True
 
         assert self.HasSemanticData
-        return any([
-            self.IsExpansionControlFlowStmt,
-            self.IsAnyArgumentConditionallyEvaluated
-        ])
+        return self.IsAnyArgumentConditionallyEvaluated
 
     @property
     def MustCreateThunksToTransform(self) -> bool:
@@ -220,7 +217,9 @@ class Invocation:
                 (self.HasSemanticData and
                  self.IsFunctionLike and
                  self.CanBeTurnedIntoFunction and
-                 self.IsAnyArgumentNotAnExpression))
+                 self.IsAnyArgumentNotAnExpression) or
+                self.IsExpansionControlFlowStmt or
+                self.IsNamePresentInCPPConditional)
 
     @property
     def SatisfiesASyntacticProperty(self) -> bool:
@@ -281,6 +280,21 @@ class Invocation:
         return self.CanBeTurnedIntoEnum and \
         (self.IsICERepresentableByInt32 if int_size == IntSize.Int32
          else self.IsICERepresentableByInt16)
+
+    @property
+    def IsValidStatementKind(self) -> bool:
+        if self.IsObjectLike:
+            return self.IsExpression
+        else:
+            return self.IsExpression or self.IsStatement
+
+    @property
+    def IsCalledByName(self) -> bool:
+        return any([
+            self.MustAlterCallSiteToTransform,
+            self.MustCreateThunksToTransform,
+            self.MustAlterArgumentsOrReturnTypeToTransform
+            ])
 
 
 MacroMap = dict[Macro, Set[Invocation]]

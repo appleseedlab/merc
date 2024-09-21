@@ -3,18 +3,20 @@ from enum import Enum, auto
 
 class IEResult(Enum):
     VALID = auto()
-    NO_SEMANTIC_DATA = auto()
+    
     MACRO_NEVER_EXPANDED = auto()
-    INVOCATIONS_HAVE_DIFFERENT_TYPE_SIGNATURES = auto()
-    NOT_DEFINED_AT_GLOBAL_SCOPE = auto()
+    POLYMORPHIC = auto()
+    NON_GLOBAL_SCOPE = auto()
     LACKS_SEMANTIC_DATA = auto()
     CANNOT_TRANSFORM = auto()
 
     USE_METAPROGRAMMING = auto()
-    THUNKIZING = auto()
-    CALLSITE_CONTEXT_ALTERING = auto()
     CALLED_BY_NAME = auto()
+    CALLSITE_CONTEXT_ALTERING = auto()
     DYNAMICALLY_SCOPED = auto()
+    ADDRESSABLE_VALUE_REQUIRED = auto()
+    INVALID_STATEMENT_KIND = auto()
+
 
 def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
     is_ = pd.mm[m]
@@ -22,35 +24,34 @@ def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
     assert all([i.IsTopLevelNonArgument for i in is_])
     # We must have semantic data for all invocations
     if not all([i.HasSemanticData for i in is_]):
-        return IEResult.NO_SEMANTIC_DATA
+        return IEResult.LACKS_SEMANTIC_DATA
     # The macro must be expanded at least once
     if len(is_) == 0:
         return IEResult.MACRO_NEVER_EXPANDED
     # All invocations must have the same type signature
     if len(set([i.TypeSignature for i in is_])) != 1:
-        return IEResult.INVOCATIONS_HAVE_DIFFERENT_TYPE_SIGNATURES
+        return IEResult.POLYMORPHIC
     # The macro must be defined at global scope
     if not m.IsDefinedAtGlobalScope:
-        return IEResult.NOT_DEFINED_AT_GLOBAL_SCOPE
+        return IEResult.NON_GLOBAL_SCOPE
 
     def check_conditions(i: Invocation):
         CONDITIONS = [
-                # Valid for analysis
                 (i.HasSemanticData, IEResult.LACKS_SEMANTIC_DATA), 
-                # Can be turn into an enum or variable
+
+                (not i.IsInvokedWhereAddressableValueRequired and not i.IsInvokedWhereModifiableValueRequired, IEResult.ADDRESSABLE_VALUE_REQUIRED),
+
+                (i.IsValidStatementKind, IEResult.INVALID_STATEMENT_KIND),
+
                 (i.CanBeTurnedIntoEnumOrVariable if m.IsObjectLike else i.CanBeTurnedIntoFunction, IEResult.CANNOT_TRANSFORM),
-                # Argument-altering
-                (not i.MustAlterArgumentsOrReturnTypeToTransform, IEResult.CALLED_BY_NAME),
-                # Declaration-altering
+
                 (i.DefinitionLocationFilename not in pd.local_includes, IEResult.DYNAMICALLY_SCOPED),
-                (i.Name not in pd.inspected_macro_names, IEResult.DYNAMICALLY_SCOPED),
-                (not i.IsNamePresentInCPPConditional, IEResult.DYNAMICALLY_SCOPED),
                 (not i.MustAlterDeclarationsToTransform, IEResult.DYNAMICALLY_SCOPED),
-                # Call-site-context-altering
-                (not i.MustAlterCallSiteToTransform, IEResult.CALLSITE_CONTEXT_ALTERING),
-                # Thunkizing
-                (not i.MustCreateThunksToTransform, IEResult.THUNKIZING),
-                (not i.MustUseMetaprogrammingToTransform, IEResult.USE_METAPROGRAMMING)
+
+                (not i.IsCalledByName, IEResult.CALLED_BY_NAME),
+
+                (not i.MustUseMetaprogrammingToTransform, IEResult.USE_METAPROGRAMMING),
+                (i.Name not in pd.inspected_macro_names, IEResult.USE_METAPROGRAMMING),
                 ]
         for condition, result in CONDITIONS:
             if not condition:
