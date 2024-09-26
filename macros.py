@@ -114,6 +114,7 @@ class Invocation:
     @property
     def HasSemanticData(self) -> bool:
         return all([
+            # TODO: Check that we don't end with a compound statement
             self.IsTopLevelNonArgument,
             not self.IsAnyArgumentNeverExpanded,
             self.IsAligned,

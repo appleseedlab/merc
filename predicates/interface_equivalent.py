@@ -7,7 +7,7 @@ class IEResult(Enum):
     MACRO_NEVER_EXPANDED = auto()
     POLYMORPHIC = auto()
     NON_GLOBAL_SCOPE = auto()
-    LACKS_SEMANTIC_DATA = auto()
+    SYNTACTICALLY_INVALID_PROPERTY = auto()
     CANNOT_TRANSFORM = auto()
 
     USE_METAPROGRAMMING = auto()
@@ -24,7 +24,7 @@ def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
     assert all([i.IsTopLevelNonArgument for i in is_])
     # We must have semantic data for all invocations
     if not all([i.HasSemanticData for i in is_]):
-        return IEResult.LACKS_SEMANTIC_DATA
+        return IEResult.SYNTACTICALLY_INVALID_PROPERTY
     # The macro must be expanded at least once
     if len(is_) == 0:
         return IEResult.MACRO_NEVER_EXPANDED
@@ -37,7 +37,7 @@ def ie_def(m: Macro, pd: PreprocessorData) -> IEResult:
 
     def check_conditions(i: Invocation):
         CONDITIONS = [
-                (i.HasSemanticData, IEResult.LACKS_SEMANTIC_DATA), 
+                (i.HasSemanticData, IEResult.SYNTACTICALLY_INVALID_PROPERTY), 
 
                 (not i.IsInvokedWhereAddressableValueRequired and not i.IsInvokedWhereModifiableValueRequired, IEResult.ADDRESSABLE_VALUE_REQUIRED),
 
