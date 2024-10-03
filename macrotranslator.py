@@ -3,9 +3,10 @@ from translationconfig import TranslationConfig
 import logging
 import re
 from translationstats import TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
-from translationstats import TranslationType
+from translationstats import TranslationTarget
 from translationstats import SkipType
 import predicates.interface_equivalent
+from predicates.interface_equivalent import ie_def, IEResult, TranslationTarget
 
 
 logger = logging.getLogger(__name__)
@@ -37,21 +38,24 @@ class MacroTranslator:
         return translationMap
 
     def get_macro_record(self, macro: Macro, invocations: set[Invocation], pd: PreprocessorData) -> MacroRecord:
-        ie_result = predicates.interface_equivalent.ie_def(macro, pd)
-        if  ie_result != predicates.interface_equivalent.IEResult.VALID:
-            return SkipRecord(macro, SkipType.NOT_INTERFACE_EQUIVALENT, ie_result)
+        ie_result, translation_target = ie_def(macro, pd, self.translation_config)
 
+        if translation_target is not None:
+            skip_reason = self.should_skip_due_to_technical_limitations(macro, invocations)
+            if skip_reason:
+                return SkipRecord(macro, skip_reason)
 
-        skip_reason = self.should_skip_due_to_technical_limitations(macro, invocations)
-        if skip_reason:
-            return SkipRecord(macro, skip_reason)
-        
-
-        if macro.IsFunctionLike:
-            return self.translate_function_like_macro(macro, invocations)
-
-        return self.translate_object_like_macro(macro, invocations)
-
+        match translation_target:
+            case TranslationTarget.VOID_FUNCTION:
+                return self.translate_macro_to_void_function(macro, invocations)
+            case TranslationTarget.NON_VOID_FUNCTION:
+                return self.translate_macro_to_non_void_function(macro, invocations)
+            case TranslationTarget.GLOBAL_VARIABLE:
+                return self.translate_macro_to_global_variable(macro, invocations)
+            case TranslationTarget.ENUM:
+                return self.translate_macro_to_enum(macro, invocations)
+            case None:
+                return SkipRecord(macro, SkipType.NOT_INTERFACE_EQUIVALENT, ie_result)
 
     def should_skip_due_to_technical_limitations(self, macro: Macro, invocations: set[Invocation]) -> SkipType | None:
         """
@@ -87,45 +91,24 @@ class MacroTranslator:
 
         return None
 
-    def translate_function_like_macro(self, macro: Macro, invocations: set[Invocation]) -> TranslationRecord:
+    def translate_macro_to_void_function(self, macro: Macro, invocations: set[Invocation]) -> TranslationRecord:
         invocation = next(iter(invocations))
 
-        # Determine if we return or not
-        is_void = invocation.IsExpansionTypeVoid or invocation.IsStatement
-        returnStatement = "return" if not is_void else ""
-
-        translation_type = TranslationType.NON_VOID if not is_void else TranslationType.VOID
-
-        translation = f"static inline {invocation.TypeSignature} {{ {returnStatement} {macro.Body}; }}"
-        return TranslationRecord(macro, translation, translation_type)
-
-    def translate_object_like_macro(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
+        translation = f"static inline {invocation.TypeSignature} {{ {macro.Body}; }}"
+        return TranslationRecord(macro, translation, TranslationTarget.VOID_FUNCTION)
+    
+    def translate_macro_to_non_void_function(self, macro: Macro, invocations: set[Invocation]) -> TranslationRecord:
         invocation = next(iter(invocations))
 
-        # All invocations where an ICE is required must be representable by type int
-        # to be translatable to an enum
-        can_translate_to_enum = all(
-            i.CanBeTurnedIntoEnumWithIntSize(self.translation_config.int_size)
-            for i in invocations if i.IsInvokedWhereICERequired
-        )
+        translation = f"static inline {invocation.TypeSignature} {{ return {macro.Body}; }}"
+        return TranslationRecord(macro, translation, TranslationTarget.NON_VOID_FUNCTION)
 
-        invoked_where_ICE_required = any(i.IsInvokedWhereICERequired for i in invocations)
-        invoked_where_constant_expression_required = \
-            any(i.IsInvokedWhereConstantExpressionRequired for i in invocations)
+    def translate_macro_to_global_variable(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
+        invocation = next(iter(invocations))
 
-        # If we're an ICE and translatable to an enum, translate to enum
-        if invoked_where_ICE_required:
-            if can_translate_to_enum:
-                translation = f"enum {{ {macro.Name} = {macro.Body} }};"
-                return TranslationRecord(macro, translation, TranslationType.ENUM)
-            else:
-                # Can't fit into an enum
-                return SkipRecord(macro, SkipType.CANT_FIT_ICE_IN_ENUM_SIZE)
+        translation = f"static const {invocation.TypeSignature} = {macro.Body};"
+        return TranslationRecord(macro, translation, TranslationTarget.GLOBAL_VARIABLE)
 
-        # Not a constant expression (or ICE) so safe to translate to a static const
-        if not invoked_where_constant_expression_required:
-            translation = f"static const {invocation.TypeSignature} = {macro.Body};"
-            return TranslationRecord(macro, translation, TranslationType.CONST_STATIC)
-        # We're a constant expression but not an ICE - can't handle
-        else:
-            return SkipRecord(macro, SkipType.INVOCATION_REQUIRES_CONSTANT_EXPRESSION)
+    def translate_macro_to_enum(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
+        translation = f"enum {{ {macro.Name} = {macro.Body} }};"
+        return TranslationRecord(macro, translation, TranslationTarget.ENUM)

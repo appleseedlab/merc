@@ -44,6 +44,7 @@ class Invocation:
     DoesBodyReferenceMacroDefinedAfterMacro: bool
     DoesBodyReferenceDeclDeclaredAfterMacro: bool
     DoesBodyContainDeclRefExpr: bool
+    DoesBodyEndWithCompoundStmt: bool
     DoesSubexpressionExpandedFromBodyHaveLocalType: bool
     DoesSubexpressionExpandedFromBodyHaveTypeDefinedAfterMacro: bool
 
@@ -76,6 +77,7 @@ class Invocation:
 
     IsInvokedWhereModifiableValueRequired: bool
     IsInvokedWhereAddressableValueRequired: bool
+    IsAnyArgumentExpandedWhereConstExprRequired: bool
     IsInvokedWhereICERequired: bool
     IsInvokedWhereConstantExpressionRequired: bool
 
@@ -135,11 +137,18 @@ class Invocation:
             self.ASTKind == 'Expr',
             # Variables cannot contain DeclRefExprs
             not self.DoesBodyContainDeclRefExpr,
-            not self.DoesAnyArgumentContainDeclRefExpr,
             # Variables cannot be invoked where ICEs are required
             not self.IsInvokedWhereICERequired,
             # Variables cannot have the void type
             not self.IsExpansionTypeVoid
+        ])
+
+    @property
+    def IsExpansionConstantExpression(self) -> bool:
+        return all([
+            self.ASTKind == 'Expr',
+            # Variables cannot contain DeclRefExprs
+            not self.DoesBodyContainDeclRefExpr,
         ])
 
     @property
@@ -191,9 +200,6 @@ class Invocation:
             self.IsExpansionTypeAnonymous,
             self.IsExpansionTypeLocalType,
             self.IsExpansionTypeDefinedAfterMacro,
-            self.IsAnyArgumentTypeAnonymous,
-            self.IsAnyArgumentTypeLocalType,
-            self.IsAnyArgumentTypeDefinedAfterMacro,
             self.ASTKind == 'TypeLoc'
         ])
 
@@ -292,9 +298,16 @@ class Invocation:
     @property
     def IsCalledByName(self) -> bool:
         return any([
-            self.MustAlterCallSiteToTransform,
-            self.MustCreateThunksToTransform,
-            self.MustAlterArgumentsOrReturnTypeToTransform
+            self.IsAnyArgumentConditionallyEvaluated,
+            self.DoesAnyArgumentHaveSideEffects,
+            ])
+
+    @property
+    def ArgumentsCaptureEnvironment(self) -> bool:
+        return any([
+            self.IsAnyArgumentTypeAnonymous,
+            self.IsAnyArgumentTypeLocalType,
+            self.IsAnyArgumentTypeDefinedAfterMacro,
             ])
 
 
