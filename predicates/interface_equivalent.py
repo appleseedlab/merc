@@ -12,10 +12,10 @@ class IEResult(Enum):
     POLYMORPHIC = auto()
     NON_GLOBAL_SCOPE = auto()
     SYNTACTICALLY_INVALID_PROPERTY = auto()
-    CANNOT_TRANSFORM = auto()
 
     INVOKED_WHERE_ICE_REQUIRED_AND_GREATER_THAN_INT_SIZE = auto()
     INVOKED_WHERE_CONSTANT_EXPRESSION_REQUIRED = auto()
+
     EXPANSION_NOT_CONSTANT_EXPRESSION = auto()
     EXPANSION_NOT_ICE = auto()
     EXPANSION_TYPE_VOID = auto()
@@ -23,7 +23,6 @@ class IEResult(Enum):
 
     USE_METAPROGRAMMING = auto()
     CALLED_BY_NAME = auto()
-    CALLSITE_CONTEXT_ALTERING = auto()
     CAPTURES_ENVIRONMENT = auto()
     ADDRESSABLE_VALUE_REQUIRED = auto()
     INVALID_STATEMENT_KIND = auto()
@@ -55,6 +54,7 @@ def check_conditions(invocations: set[Invocation], pd: PreprocessorData, conditi
 
 GLOBAL_CONDITIONS = [
         Condition(lambda i, pd: i.HasSemanticData, IEResult.SYNTACTICALLY_INVALID_PROPERTY), 
+        Condition(lambda i, pd: not i.DoesBodyEndWithCompoundStmt, IEResult.SYNTACTICALLY_INVALID_PROPERTY),
 
         Condition(lambda i, pd: not i.IsInvokedWhereAddressableValueRequired and not i.IsInvokedWhereModifiableValueRequired, IEResult.ADDRESSABLE_VALUE_REQUIRED),
 
