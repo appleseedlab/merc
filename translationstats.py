@@ -14,7 +14,6 @@ class MacroType(Enum):
     FUNCTION_LIKE = auto()
 
 class TechnicalSkip(Enum):
-    NOT_INTERFACE_EQUIVALENT = auto()
     BODY_CONTAINS_DECL_REF_EXPR = auto()
     DEFINITION_HAS_FUNCTION_POINTER = auto()
 
