@@ -44,6 +44,7 @@ class Invocation:
     DoesBodyReferenceMacroDefinedAfterMacro: bool
     DoesBodyReferenceDeclDeclaredAfterMacro: bool
     DoesBodyContainDeclRefExpr: bool
+    DoesBodyEndWithCompoundStmt: bool
     DoesSubexpressionExpandedFromBodyHaveLocalType: bool
     DoesSubexpressionExpandedFromBodyHaveTypeDefinedAfterMacro: bool
 
@@ -76,6 +77,7 @@ class Invocation:
 
     IsInvokedWhereModifiableValueRequired: bool
     IsInvokedWhereAddressableValueRequired: bool
+    IsAnyArgumentExpandedWhereConstExprRequired: bool
     IsInvokedWhereICERequired: bool
     IsInvokedWhereConstantExpressionRequired: bool
 
@@ -114,6 +116,7 @@ class Invocation:
     @property
     def HasSemanticData(self) -> bool:
         return all([
+            # TODO: Check that we don't end with a compound statement
             self.IsTopLevelNonArgument,
             not self.IsAnyArgumentNeverExpanded,
             self.IsAligned,
@@ -134,11 +137,18 @@ class Invocation:
             self.ASTKind == 'Expr',
             # Variables cannot contain DeclRefExprs
             not self.DoesBodyContainDeclRefExpr,
-            not self.DoesAnyArgumentContainDeclRefExpr,
             # Variables cannot be invoked where ICEs are required
             not self.IsInvokedWhereICERequired,
             # Variables cannot have the void type
             not self.IsExpansionTypeVoid
+        ])
+
+    @property
+    def IsExpansionConstantExpression(self) -> bool:
+        return all([
+            self.ASTKind == 'Expr',
+            # Variables cannot contain DeclRefExprs
+            not self.DoesBodyContainDeclRefExpr,
         ])
 
     @property
@@ -190,9 +200,6 @@ class Invocation:
             self.IsExpansionTypeAnonymous,
             self.IsExpansionTypeLocalType,
             self.IsExpansionTypeDefinedAfterMacro,
-            self.IsAnyArgumentTypeAnonymous,
-            self.IsAnyArgumentTypeLocalType,
-            self.IsAnyArgumentTypeDefinedAfterMacro,
             self.ASTKind == 'TypeLoc'
         ])
 
@@ -202,10 +209,7 @@ class Invocation:
             return True
 
         assert self.HasSemanticData
-        return any([
-            self.IsExpansionControlFlowStmt,
-            self.IsAnyArgumentConditionallyEvaluated
-        ])
+        return self.IsAnyArgumentConditionallyEvaluated
 
     @property
     def MustCreateThunksToTransform(self) -> bool:
@@ -220,7 +224,9 @@ class Invocation:
                 (self.HasSemanticData and
                  self.IsFunctionLike and
                  self.CanBeTurnedIntoFunction and
-                 self.IsAnyArgumentNotAnExpression))
+                 self.IsAnyArgumentNotAnExpression) or
+                self.IsExpansionControlFlowStmt or
+                self.IsNamePresentInCPPConditional)
 
     @property
     def SatisfiesASyntacticProperty(self) -> bool:
@@ -281,6 +287,28 @@ class Invocation:
         return self.CanBeTurnedIntoEnum and \
         (self.IsICERepresentableByInt32 if int_size == IntSize.Int32
          else self.IsICERepresentableByInt16)
+
+    @property
+    def IsValidStatementKind(self) -> bool:
+        if self.IsObjectLike:
+            return self.IsExpression
+        else:
+            return self.IsExpression or self.IsStatement
+
+    @property
+    def IsCalledByName(self) -> bool:
+        return any([
+            self.IsAnyArgumentConditionallyEvaluated,
+            self.DoesAnyArgumentHaveSideEffects,
+            ])
+
+    @property
+    def ArgumentsCaptureEnvironment(self) -> bool:
+        return any([
+            self.IsAnyArgumentTypeAnonymous,
+            self.IsAnyArgumentTypeLocalType,
+            self.IsAnyArgumentTypeDefinedAfterMacro,
+            ])
 
 
 MacroMap = dict[Macro, Set[Invocation]]

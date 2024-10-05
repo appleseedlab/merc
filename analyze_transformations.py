@@ -1,37 +1,11 @@
 import json
-from typing import Set, Any
+from typing import Any
 import logging
 from collections import Counter
-import re
 
-from macros import Macro, MacroMap, PreprocessorData, Invocation
-from predicates.argument_altering import aa_invocation
-from predicates.call_site_context_altering import csca_invocation
-from predicates.declaration_altering import da_invocation
-from predicates.interface_equivalent import ie_def
-from predicates.metaprogramming import mp_invocation
-from predicates.thunkizing import thunkizing_invocation
+from macros import Macro, PreprocessorData, Invocation
 
 logger = logging.getLogger(__name__)
-
-
-def easy_to_transform_invocation(i: Invocation,
-                                 pd: PreprocessorData,
-                                 ie_invocations: Set[Invocation]):
-    return ((i in ie_invocations) or
-            ((aa_invocation(i, pd) or da_invocation(i, pd)) and
-             (not csca_invocation(i, pd)) and
-             (not thunkizing_invocation(i, pd)) and
-             (not mp_invocation(i, pd))))
-
-
-def easy_to_transform_definition(m: Macro,
-                                 pd: PreprocessorData,
-                                 ie_invocations: Set[Invocation]):
-    return all(
-        easy_to_transform_invocation(i, pd, ie_invocations)
-        for i in pd.mm[m]
-    )
 
 def filter_definitions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # Count the number of definitions with a given name
@@ -49,7 +23,7 @@ def filter_definitions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     return filtered_entries
 
-def get_interface_equivalent_preprocessordata(results_file: str) -> PreprocessorData:
+def get_tlna_src_preprocessordata(results_file: str) -> PreprocessorData:
 
     with open(results_file) as fp:
         entries = json.load(fp)
@@ -112,13 +86,5 @@ def get_interface_equivalent_preprocessordata(results_file: str) -> Preprocessor
         src_pd.local_includes
     )
 
-    # ie_pd only records preprocessor data about interface-equivalent
-    # macros
-    ie_pd = PreprocessorData(
-        {m: is_ for m, is_ in tlna_src_pd.mm.items()
-         if ie_def(m, tlna_src_pd)},
-        tlna_src_pd.inspected_macro_names,
-        tlna_src_pd.local_includes
-    )
 
-    return ie_pd
+    return tlna_src_pd

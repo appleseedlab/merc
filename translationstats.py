@@ -1,35 +1,21 @@
 from dataclasses import dataclass, field
+from predicates.interface_equivalent import IEResult, TranslationTarget
 from collections import Counter
 import csv
 from macros import Macro
-from enum import Enum
+from enum import Enum, auto
 
-# 3.10 compatibility for StrEnum
-class StrEnum(str, Enum): pass 
 
-class MacroType(StrEnum):
+class MacroType(Enum):
     """
     Types of macros that we can handle
     """
-    OBJECT_LIKE = "object_like"
-    FUNCTION_LIKE = "function_like"
+    OBJECT_LIKE = auto()
+    FUNCTION_LIKE = auto()
 
-class TranslatorAction(StrEnum):
-    pass
-
-class TranslationType(TranslatorAction):
-    VOID = "void"
-    NON_VOID = "non_void"
-    ENUM = "enum"
-    CONST_STATIC = "const_static"
-
-class SkipType(TranslatorAction):
-    BODY_CONTAINS_DECL_REF_EXPR = "body_contains_decl_ref_expr"
-    DEFINITION_HAS_FUNCTION_POINTER = "definition_has_function_pointer"
-
-    # Object-like specifics
-    CANT_FIT_ICE_IN_ENUM_SIZE = "cant_fit_ice_in_enum_size"
-    INVOCATION_REQUIRES_CONSTANT_EXPRESSION = "invocation_requires_constant_expression"
+class TechnicalSkip(Enum):
+    BODY_CONTAINS_DECL_REF_EXPR = auto()
+    DEFINITION_HAS_FUNCTION_POINTER = auto()
 
 @dataclass(slots=True)
 class MacroRecord:
@@ -38,6 +24,8 @@ class MacroRecord:
     """
     macro: Macro
 
+SkipType = TechnicalSkip | IEResult
+
 @dataclass(slots=True)
 class SkipRecord(MacroRecord):
     skip_type: SkipType
@@ -45,11 +33,11 @@ class SkipRecord(MacroRecord):
 @dataclass(slots=True)
 class TranslationRecord(MacroRecord):
     macro_translation: str
-    translation_type: TranslationType
+    translation_type: TranslationTarget
 
 @dataclass()
 class TranslationRecords:
-    records_by_type: Counter[tuple[MacroType, TranslatorAction]] = field(default_factory=Counter)
+    records_by_type: Counter[tuple[MacroType, SkipType | TranslationTarget]] = field(default_factory=Counter)
     translation_records: list[TranslationRecord] = field(default_factory=list)
     skip_records: list[SkipRecord] = field(default_factory=list)
 
@@ -88,23 +76,30 @@ class TranslationRecords:
 
         print(f"Object-like stats:")
         print(f"  - Total translated: {self.total_translated_by_type(MacroType.OBJECT_LIKE)}")
-        print(f"    - Translated to enum: {self.records_by_type[(MacroType.OBJECT_LIKE,TranslationType.ENUM)]}")
-        print(f"    - Translated to enum: {self.records_by_type[(MacroType.OBJECT_LIKE,TranslationType.CONST_STATIC)]}")
+        print(f"    - Translated to enum: {self.records_by_type[(MacroType.OBJECT_LIKE,TranslationTarget.ENUM)]}")
+        print(f"    - Translated to const static: {self.records_by_type[(MacroType.OBJECT_LIKE,TranslationTarget.GLOBAL_VARIABLE)]}")
         print(f"  - Total skipped: {self.total_skipped_by_type(MacroType.OBJECT_LIKE)}")
-        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.OBJECT_LIKE,SkipType.DEFINITION_HAS_FUNCTION_POINTER)]}")
-        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.OBJECT_LIKE,SkipType.BODY_CONTAINS_DECL_REF_EXPR)]}")
-        print(f"    - Untranslatable because enum size too small to represent ICE:"
-              f"{self.records_by_type[(MacroType.OBJECT_LIKE,SkipType.CANT_FIT_ICE_IN_ENUM_SIZE)]}")
-        print(f"    - Untranslatable contant expressions:"
-              f"{self.records_by_type[(MacroType.OBJECT_LIKE,SkipType.INVOCATION_REQUIRES_CONSTANT_EXPRESSION)]}")
+        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.OBJECT_LIKE,TechnicalSkip.DEFINITION_HAS_FUNCTION_POINTER)]}")
+        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.OBJECT_LIKE,TechnicalSkip.BODY_CONTAINS_DECL_REF_EXPR)]}")
 
         print(f"Function-like stats:")
         print(f"  - Total translated: {self.total_translated_by_type(MacroType.FUNCTION_LIKE)}")
-        print(f"    - Translated to void: {self.records_by_type[(MacroType.FUNCTION_LIKE,TranslationType.VOID)]}")
-        print(f"    - Translated to non-void: {self.records_by_type[(MacroType.FUNCTION_LIKE,TranslationType.NON_VOID)]}")
+        print(f"    - Translated to void: {self.records_by_type[(MacroType.FUNCTION_LIKE,TranslationTarget.VOID_FUNCTION)]}")
+        print(f"    - Translated to non-void: {self.records_by_type[(MacroType.FUNCTION_LIKE,TranslationTarget.NON_VOID_FUNCTION)]}")
         print(f"  - Total skipped: {self.total_skipped_by_type(MacroType.FUNCTION_LIKE)}")
-        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.FUNCTION_LIKE,SkipType.DEFINITION_HAS_FUNCTION_POINTER)]}")
-        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.FUNCTION_LIKE,SkipType.BODY_CONTAINS_DECL_REF_EXPR)]}")
+        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.FUNCTION_LIKE,TechnicalSkip.DEFINITION_HAS_FUNCTION_POINTER)]}")
+        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.FUNCTION_LIKE,TechnicalSkip.BODY_CONTAINS_DECL_REF_EXPR)]}")
+
+        # count not interface equivalent
+        ie_reason_counter = Counter()
+        for skip_record in self.skip_records:
+            if skip_record.skip_type:
+                ie_reason_counter[skip_record.skip_type] += 1
+
+        print(f"- Total skipped due to not being interface equivalent: {sum(ie_reason_counter.values())}")
+        for ie_reason, count in ie_reason_counter.items():
+            print(f"    - {ie_reason}: {count}")
+
     
     def output_csv(self, filename: str):
         with open(filename, 'w', newline='') as csvfile:
