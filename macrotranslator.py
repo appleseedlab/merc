@@ -1,13 +1,10 @@
-from macros import MacroMap, Macro, Invocation, PreprocessorData
-from translationconfig import TranslationConfig
 import logging
-import re
-from translationstats import TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
-from translationstats import TranslationTarget
-from translationstats import TechnicalSkip
-import predicates.interface_equivalent
-from predicates.interface_equivalent import ie_def, IEResult, TranslationTarget
 
+from macros import Macro, Invocation, PreprocessorData
+from predicates.interface_equivalent import ie_def, TranslationTarget
+from translationconfig import TranslationConfig
+from translationstats import TechnicalSkip
+from translationstats import TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
 
 logger = logging.getLogger(__name__)
 
