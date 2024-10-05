@@ -118,9 +118,6 @@ def ie_def(m: Macro, pd: PreprocessorData, translation_config: TranslationConfig
                                               pd=pd,
                                               conditions=GLOBAL_CONDITIONS)
     if global_condition_check != IEResult.VALID:
-        if not m.IsObjectLike:
-            print(f"Function macro {m.Name} is not global {global_condition_check}")
-
         return global_condition_check, None
 
     if m.IsObjectLike:
@@ -162,5 +159,4 @@ def ie_def(m: Macro, pd: PreprocessorData, translation_config: TranslationConfig
         elif void_condition_check == IEResult.VALID:
             return void_condition_check, TranslationTarget.VOID_FUNCTION
         else:
-            print(f"Function macro {m.Name} is neither void nor non-void {non_void_condition_check} {void_condition_check}")
             return void_condition_check, None
