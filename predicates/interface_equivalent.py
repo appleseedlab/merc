@@ -69,6 +69,7 @@ GLOBAL_CONDITIONS = [
 VARIABLE_CONDITIONS = [
     Condition(lambda i, pd: not i.IsInvokedWhereConstantExpressionRequired, IEResult.INVOKED_WHERE_CONSTANT_EXPRESSION_REQUIRED),     
     Condition(lambda i, pd: i.IsExpansionConstantExpression, IEResult.EXPANSION_NOT_CONSTANT_EXPRESSION),
+    Condition(lambda i, pd: not i.IsExpansionTypeVoid, IEResult.EXPANSION_TYPE_VOID),
 ]
 
 ENUM_CONDITIONS = [
