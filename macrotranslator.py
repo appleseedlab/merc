@@ -4,7 +4,7 @@ import logging
 import re
 from translationstats import TranslationRecord, TranslationRecords, SkipRecord, MacroRecord
 from translationstats import TranslationTarget
-from translationstats import SkipType
+from translationstats import TechnicalSkip
 import predicates.interface_equivalent
 from predicates.interface_equivalent import ie_def, IEResult, TranslationTarget
 
@@ -55,9 +55,9 @@ class MacroTranslator:
             case TranslationTarget.ENUM:
                 return self.translate_macro_to_enum(macro, invocations)
             case None:
-                return SkipRecord(macro, SkipType.NOT_INTERFACE_EQUIVALENT, ie_result)
+                return SkipRecord(macro, ie_result)
 
-    def should_skip_due_to_technical_limitations(self, macro: Macro, invocations: set[Invocation]) -> SkipType | None:
+    def should_skip_due_to_technical_limitations(self, macro: Macro, invocations: set[Invocation]) -> TechnicalSkip | None:
         """
         Skips are due to technical limitations of Maki and MerC and not
         due to irreconcilable differences in macro and C semantics.
@@ -78,7 +78,7 @@ class MacroTranslator:
         # TODO(Joey): Implement a way to translate these
         if invocation_has_function_type:
             logger.debug(f"Skipping {macro.Name} as it has a function pointer type")
-            return SkipType.DEFINITION_HAS_FUNCTION_POINTER
+            return TechnicalSkip.DEFINITION_HAS_FUNCTION_POINTER
 
         # If body contains a DeclRefExpr and is in a header file, skip
         # TODO(Joey/Brent): Find better way on Maki side to handle this
@@ -87,7 +87,7 @@ class MacroTranslator:
         invocation_has_decl_ref_expr = invocation.DoesBodyContainDeclRefExpr
         if invocation_has_decl_ref_expr and invocation.DefinitionLocationFilename.endswith(".h"):
             logger.debug(f"Skipping {macro.Name} as it contains a DeclRefExpr")
-            return SkipType.BODY_CONTAINS_DECL_REF_EXPR
+            return TechnicalSkip.BODY_CONTAINS_DECL_REF_EXPR
 
         return None
 

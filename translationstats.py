@@ -13,10 +13,7 @@ class MacroType(Enum):
     OBJECT_LIKE = auto()
     FUNCTION_LIKE = auto()
 
-class TranslatorAction(Enum):
-    pass
-
-class SkipType(TranslatorAction):
+class TechnicalSkip(Enum):
     NOT_INTERFACE_EQUIVALENT = auto()
     BODY_CONTAINS_DECL_REF_EXPR = auto()
     DEFINITION_HAS_FUNCTION_POINTER = auto()
@@ -28,10 +25,11 @@ class MacroRecord:
     """
     macro: Macro
 
+SkipType = TechnicalSkip | IEResult
+
 @dataclass(slots=True)
 class SkipRecord(MacroRecord):
     skip_type: SkipType
-    ie_result: IEResult | None = None
 
 @dataclass(slots=True)
 class TranslationRecord(MacroRecord):
@@ -82,22 +80,22 @@ class TranslationRecords:
         print(f"    - Translated to enum: {self.records_by_type[(MacroType.OBJECT_LIKE,TranslationTarget.ENUM)]}")
         print(f"    - Translated to const static: {self.records_by_type[(MacroType.OBJECT_LIKE,TranslationTarget.GLOBAL_VARIABLE)]}")
         print(f"  - Total skipped: {self.total_skipped_by_type(MacroType.OBJECT_LIKE)}")
-        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.OBJECT_LIKE,SkipType.DEFINITION_HAS_FUNCTION_POINTER)]}")
-        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.OBJECT_LIKE,SkipType.BODY_CONTAINS_DECL_REF_EXPR)]}")
+        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.OBJECT_LIKE,TechnicalSkip.DEFINITION_HAS_FUNCTION_POINTER)]}")
+        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.OBJECT_LIKE,TechnicalSkip.BODY_CONTAINS_DECL_REF_EXPR)]}")
 
         print(f"Function-like stats:")
         print(f"  - Total translated: {self.total_translated_by_type(MacroType.FUNCTION_LIKE)}")
         print(f"    - Translated to void: {self.records_by_type[(MacroType.FUNCTION_LIKE,TranslationTarget.VOID_FUNCTION)]}")
         print(f"    - Translated to non-void: {self.records_by_type[(MacroType.FUNCTION_LIKE,TranslationTarget.NON_VOID_FUNCTION)]}")
         print(f"  - Total skipped: {self.total_skipped_by_type(MacroType.FUNCTION_LIKE)}")
-        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.FUNCTION_LIKE,SkipType.DEFINITION_HAS_FUNCTION_POINTER)]}")
-        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.FUNCTION_LIKE,SkipType.BODY_CONTAINS_DECL_REF_EXPR)]}")
+        print(f"    - Skipped due to function pointer type: {self.records_by_type[(MacroType.FUNCTION_LIKE,TechnicalSkip.DEFINITION_HAS_FUNCTION_POINTER)]}")
+        print(f"    - Skipped due to DeclRefExpr: {self.records_by_type[(MacroType.FUNCTION_LIKE,TechnicalSkip.BODY_CONTAINS_DECL_REF_EXPR)]}")
 
         # count not interface equivalent
         ie_reason_counter = Counter()
         for skip_record in self.skip_records:
-            if skip_record.ie_result:
-                ie_reason_counter[skip_record.ie_result] += 1
+            if skip_record.skip_type:
+                ie_reason_counter[skip_record.skip_type] += 1
 
         print(f"- Total skipped due to not being interface equivalent: {sum(ie_reason_counter.values())}")
         for ie_reason, count in ie_reason_counter.items():
@@ -122,6 +120,5 @@ class TranslationRecords:
                                  self._get_macro_type(skip_record.macro),
                                  "Skipped",
                                  "",
-                                 # Use IEResult if one is given, otherwise put the SkipType
-                                 skip_record.ie_result if skip_record.skip_type == SkipType.NOT_INTERFACE_EQUIVALENT else skip_record.skip_type]
+                                 skip_record.skip_type]
                                 )
