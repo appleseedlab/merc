@@ -1,5 +1,4 @@
 import logging
-
 from macros import Macro, Invocation, PreprocessorData
 from predicates.interface_equivalent import ie_def, TranslationTarget
 from translationconfig import TranslationConfig
@@ -102,7 +101,6 @@ class MacroTranslator:
 
     def translate_macro_to_global_variable(self, macro: Macro, invocations: set[Invocation]) -> MacroRecord:
         invocation = next(iter(invocations))
-
         translation = f"static const {invocation.TypeSignature} = {macro.Body};"
         return TranslationRecord(macro, invocations, translation, TranslationTarget.GLOBAL_VARIABLE)
 

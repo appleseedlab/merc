@@ -13,7 +13,7 @@ from translationconfig import TranslationConfig, IntSize
 logger = logging.getLogger(__name__)
 
 
-def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, str | None]) -> None:
+def translate_src_files(src_dir: pathlib.Path, out_dir: pathlib.Path, translations: dict[Macro, str | None]) -> None:
     # dict of src files to their contents in lines
     src_file_contents: dict[str, list[str]] = {}
     for macro, translation in translations.items():
@@ -28,7 +28,7 @@ def translate_src_files(src_dir: str, out_dir: str, translations: dict[Macro, st
         src_file_path = startDefLocParts[0]
 
         # only open files in src dir
-        if not src_file_path.startswith(src_dir):
+        if not src_file_path.startswith(str(src_dir)):
             logger.warning(f"Skipping {src_file_path} because it is not in the source directory {src_dir}")
             continue
 
@@ -88,6 +88,8 @@ def main():
                     help='Enable verbose logging')
     ap.add_argument('--output-csv', type=pathlib.Path, required=False,
                     help='Output the macro translations to a CSV file.')
+    ap.add_argument('--program-name', type=str, required=False,
+                    help='Name of the program being translated. Used in the CSV output.')
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -95,9 +97,9 @@ def main():
 
     args = ap.parse_args()
 
-    input_src_dir = os.path.abspath(args.input_src_dir)
-    maki_analysis_path = os.path.abspath(args.maki_analysis_file)
-    output_translation_dir = args.output_translation_dir
+    input_src_dir = args.input_src_dir.resolve()
+    maki_analysis_path = args.maki_analysis_file.resolve()
+    output_translation_dir = args.output_translation_dir.resolve()
 
     translation_config = TranslationConfig.from_args(args)
 
@@ -113,7 +115,8 @@ def main():
     translator.translation_stats.print_totals()
     if args.output_csv:
         path = os.path.abspath(args.output_csv)
-        translator.translation_stats.output_csv(path)
+        program_name = args.program_name or input_src_dir.name
+        translator.translation_stats.output_csv(path, program_name)
 
 
 if __name__ == '__main__':

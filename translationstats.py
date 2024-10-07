@@ -102,13 +102,14 @@ class TranslationRecords:
             print(f"    - {ie_reason}: {count}")
 
     
-    def output_csv(self, filename: str):
+    def output_csv(self, filename: str, program_name: str) -> None:
         with open(filename, 'w', newline='') as csvfile:
             writer = csv.writer(csvfile, quoting=csv.QUOTE_MINIMAL)
-            writer.writerow(["Macro", "Macro Type", "Action", "Translation or Macro Body", "Action Type", "Invocation Amount"])
+            writer.writerow(["Program Name", "Macro", "Macro Type", "Action", "Translation or Macro Body", "Action Type", "Invocation Amount"])
 
             for translation_record in self.translation_records:
-                writer.writerow([translation_record.macro.Name,
+                writer.writerow([program_name,
+                                 translation_record.macro.Name,
                                  self._get_macro_type(translation_record.macro),
                                  "Translated",
                                  translation_record.macro_translation,
@@ -117,7 +118,8 @@ class TranslationRecords:
                                 )
 
             for skip_record in self.skip_records:
-                writer.writerow([skip_record.macro.Name,
+                writer.writerow([program_name,
+                                 skip_record.macro.Name,
                                  self._get_macro_type(skip_record.macro),
                                  "Skipped",
                                  skip_record.macro.Body,
