@@ -77,13 +77,15 @@ class Invocation:
 
     IsInvokedWhereModifiableValueRequired: bool
     IsInvokedWhereAddressableValueRequired: bool
-    IsAnyArgumentExpandedWhereConstExprRequired: bool
+    IsInvokedInSizeOf: bool
     IsInvokedWhereICERequired: bool
     IsInvokedWhereConstantExpressionRequired: bool
 
     IsAnyArgumentExpandedWhereModifiableValueRequired: bool
     IsAnyArgumentExpandedWhereAddressableValueRequired: bool
+    IsAnyArgumentExpandedInSizeOf: bool
     IsAnyArgumentConditionallyEvaluated: bool
+    IsAnyArgumentExpandedWhereConstExprRequired: bool
     IsAnyArgumentNeverExpanded: bool
     IsAnyArgumentNotAnExpression: bool
 
