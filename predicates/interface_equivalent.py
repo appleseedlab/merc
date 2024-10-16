@@ -15,6 +15,7 @@ class IEResult(Enum):
 
     INVOKED_WHERE_ICE_REQUIRED_AND_GREATER_THAN_INT_SIZE = auto()
     INVOKED_WHERE_CONSTANT_EXPRESSION_REQUIRED = auto()
+    INVOKED_IN_SIZEOF_EXPRESSION = auto()
 
     EXPANSION_NOT_CONSTANT_EXPRESSION = auto()
     EXPANSION_NOT_ICE = auto()
@@ -33,6 +34,7 @@ class IEResult(Enum):
     ARGUMENT_INVOKED_WHERE_CONSTANT_EXPRESSION_REQUIRED = auto()
     ARGUMENT_CAPTURES_ENVIRONMENT = auto()
     ARGUMENT_CALLED_BY_NAME = auto()
+    ARGUMENT_EXPANDED_IN_SIZEOF = auto()
 
 class TranslationTarget(Enum):
     GLOBAL_VARIABLE = auto()
@@ -57,6 +59,7 @@ GLOBAL_CONDITIONS = [
         Condition(lambda i, pd: not i.DoesBodyEndWithCompoundStmt, IEResult.SYNTACTICALLY_INVALID_PROPERTY),
 
         Condition(lambda i, pd: not i.IsInvokedWhereAddressableValueRequired and not i.IsInvokedWhereModifiableValueRequired, IEResult.ADDRESSABLE_VALUE_REQUIRED),
+        Condition(lambda i, pd: not i.IsInvokedInSizeOf, IEResult.INVOKED_IN_SIZEOF_EXPRESSION),
 
         Condition(lambda i, pd: i.DefinitionLocationFilename not in pd.local_includes, IEResult.CAPTURES_ENVIRONMENT),
         Condition(lambda i, pd: not i.MustAlterDeclarationsToTransform, IEResult.CAPTURES_ENVIRONMENT),
@@ -93,6 +96,7 @@ ARGUMENT_CONDITIONS = [
     Condition(lambda i, pd: not i.IsAnyArgumentExpandedWhereConstExprRequired, IEResult.ARGUMENT_INVOKED_WHERE_CONSTANT_EXPRESSION_REQUIRED),
     Condition(lambda i, pd: not i.IsAnyArgumentTypeVoid, IEResult.ARGUMENT_TYPE_VOID),
     Condition(lambda i, pd: not (i.IsAnyArgumentExpandedWhereModifiableValueRequired or i.IsAnyArgumentExpandedWhereAddressableValueRequired), IEResult.ARGUMENT_ADDRESSABLE_VALUE_REQUIRED),
+    Condition(lambda i, pd: not i.IsAnyArgumentExpandedInSizeOf, IEResult.ARGUMENT_EXPANDED_IN_SIZEOF),
     Condition(lambda i, pd: not i.IsAnyArgumentNotAnExpression, IEResult.ARGUMENT_TYPE_NOT_EXPRESSION),
 ]
 
