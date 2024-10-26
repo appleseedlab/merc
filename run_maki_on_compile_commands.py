@@ -10,6 +10,7 @@ import subprocess
 from functools import partial
 import concurrent.futures
 from typing import Any
+import pathlib
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,40 @@ class CompileCommand:
             file=json_file["file"]
         )
 
+class AnalysisCache:
+    def __init__(self, cache_dir: str) -> None:
+        self.cache_dir = pathlib.Path(cache_dir)
+        self.cache_dir.mkdir(exist_ok=True)
 
-def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[dict[str, Any]]:
+    def get_cached_result(self, cc: CompileCommand) -> list[dict[str, Any]] | None:
+        cc_hash = hash(cc)
+
+        cache_path = self.cache_dir / f"{cc_hash}.json"
+
+        if cache_path.exists():
+            try:
+                with open(cache_path, 'r') as f:
+                    logger.info(f"Loading {cc.file} from cache")
+                    return json.load(f)
+            except json.JSONDecodeError:
+                logger.warning(f"Corrupted cache file for {cc.file} at path {cache_path}, ignoring")
+
+        return None
+        
+
+    def cache_result(self, cc: CompileCommand, results: list[dict[str, Any]]) -> None:
+        cc_hash = hash(cc)
+
+        cache_path = self.cache_dir / f"{cc_hash}.json"
+
+        with open(cache_path, 'w') as f:
+            json.dump(results, f)
+
+
+def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str, cache: AnalysisCache) -> list[dict[str, Any]]:
+
+    if (result := cache.get_cached_result(cc)) is not None:
+        return result
 
     # pass cpp2c plugin shared library file
     args = cc.arguments
@@ -69,7 +102,10 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[d
             logger.warning(f"clang stderr with args {' '.join(args)}:")
             logger.warning(f"{process.stderr.decode()}")
 
-        return json.loads(process.stdout.decode())
+        result = json.loads(process.stdout.decode())
+        cache.cache_result(cc, result)
+
+        return result
     except subprocess.CalledProcessError as e:
         logger.error(f"ERROR ON file {cc.file} w/ returncode {e.returncode}\n"
                      f"Command: {' '.join(args)}\n"
@@ -108,6 +144,8 @@ def main():
     ap.add_argument('-j', '--num_jobs', type=int, default=os.cpu_count(),
                     help='Number of threads to use. Default is number of CPUs on system')
     ap.add_argument('-v', '--verbose', action='store_true')
+    ap.add_argument('--cache-dir', type=pathlib.Path, default=pathlib.Path('.maki_cache'),
+                    help='Directory to store cached analysis results')
     args = ap.parse_args()
 
     plugin_path = os.path.abspath(args.plugin_path)
@@ -134,10 +172,11 @@ def main():
                            for split_cc in split_compile_commands_by_src_file(cc)]
 
     # Run maki on each compile command threaded
+    cache = AnalysisCache(args.cache_dir)
     with concurrent.futures.ProcessPoolExecutor(max_workers=num_jobs) as executor:
         results = list(
             executor.map(
-                partial(run_maki_on_compile_command, maki_so_path=plugin_path),
+                partial(run_maki_on_compile_command, maki_so_path=plugin_path, cache=cache),
                 split_compile_commands
             )
         )
