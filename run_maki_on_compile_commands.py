@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import shlex
 from dataclasses import dataclass
 import os
 import json
@@ -27,7 +28,7 @@ class CompileCommand:
         if "arguments" in json_file:
             arguments = json_file["arguments"]
         elif "command" in json_file:
-            arguments = json_file["command"].split()
+            arguments = shlex.split(json_file["command"])
         else:
             raise ValueError("Compile command must have either 'arguments' or 'command' key")
 
@@ -61,7 +62,7 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[d
 
         logger.info(f"Compiling {cc.file} with args {' '.join(args)}")
 
-        process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        process = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
 
         # stderr
         if process.stderr:
@@ -70,7 +71,9 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[d
 
         return json.loads(process.stdout.decode())
     except subprocess.CalledProcessError as e:
-        logger.exception(f"Error running maki with args {args} on {cc.file}: {e}")
+        logger.error(f"ERROR ON file {cc.file} w/ returncode {e.returncode}\n"
+                     f"Command: {' '.join(args)}\n"
+                     f"{e.stderr.decode()}")
         return []
 
 def is_source_file(arg: str) -> bool:
