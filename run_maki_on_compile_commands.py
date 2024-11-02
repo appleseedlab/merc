@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+
 import argparse
 import logging
 import shlex
@@ -7,9 +8,10 @@ from dataclasses import dataclass
 import os
 import json
 import subprocess
-from functools import partial
 import concurrent.futures
 from typing import Any
+import pathlib
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +40,55 @@ class CompileCommand:
             file=json_file["file"]
         )
 
+    def get_cache_key(self) -> str:
+        """
+        Cache key for use with AnalysisCache.
+        Note that this does NOT hash file contents, only the arguments of each CompileCommand!
+        """
+        sha1 = hashlib.sha1()
+        sha1.update(repr(self.arguments).encode())
+        return sha1.hexdigest()
 
-def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[dict[str, Any]]:
+class AnalysisCache:
+    def __init__(self, cache_dir: str) -> None:
+        self.cache_dir = pathlib.Path(cache_dir).resolve()
+        self.cache_dir.mkdir(exist_ok=True)
 
-    # pass cpp2c plugin shared library file
-    args = cc.arguments
+    def get_cache_path(self, cc: CompileCommand) -> pathlib.Path:
+        cc_hash = cc.get_cache_key()
+        return self.cache_dir / f"{cc_hash}.json"
+
+    def get_cached_result(self, cc: CompileCommand) -> list[dict[str, Any]] | None:
+        cache_path = self.get_cache_path(cc)
+
+        if cache_path.exists():
+            try:
+                with open(cache_path, 'r') as f:
+                    logger.info(f"Loading {cc.file} from cache")
+                    return json.load(f)
+            except json.JSONDecodeError:
+                logger.warning(f"Corrupted cache file for {cc.file} at path {cache_path}, ignoring")
+
+        return None
+        
+
+    def cache_result(self, cc: CompileCommand, results: list[dict[str, Any]]) -> None:
+        cache_path = self.get_cache_path(cc)
+        with open(cache_path, 'w+') as f:
+            json.dump(results, f)
+
+
+def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str, cache: AnalysisCache | None) -> list[dict[str, Any]]:
+
+    if cache is not None:
+        if (result := cache.get_cached_result(cc)) is not None:
+            return result
+
+    # Make copy to avoid changing args in place
+    args = cc.arguments.copy()
+
     args[0] = "clang-17"
+    # pass maki plugin shared library file
     args.insert(1, f'-fplugin={maki_so_path}')
     args.append(cc.file)
     # at the very end, specify that we are only doing syntactic analysis
@@ -69,7 +114,11 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str) -> list[d
             logger.warning(f"clang stderr with args {' '.join(args)}:")
             logger.warning(f"{process.stderr.decode()}")
 
-        return json.loads(process.stdout.decode())
+        result = json.loads(process.stdout.decode())
+        if cache is not None:
+            cache.cache_result(cc, result)
+
+        return result
     except subprocess.CalledProcessError as e:
         logger.error(f"ERROR ON file {cc.file} w/ returncode {e.returncode}\n"
                      f"Command: {' '.join(args)}\n"
@@ -108,6 +157,10 @@ def main():
     ap.add_argument('-j', '--num_jobs', type=int, default=os.cpu_count(),
                     help='Number of threads to use. Default is number of CPUs on system')
     ap.add_argument('-v', '--verbose', action='store_true')
+    ap.add_argument('--cache-dir', type=pathlib.Path, required=False,
+                    help='(Optional) Enable caching analysis results and place them in this path.\n'
+                          'Note that this will serve outdated results if the source files in the input program changes,\n'
+                          'or if a version of Maki with different output is used!')
     args = ap.parse_args()
 
     plugin_path = os.path.abspath(args.plugin_path)
@@ -134,22 +187,25 @@ def main():
                            for split_cc in split_compile_commands_by_src_file(cc)]
 
     # Run maki on each compile command threaded
-    with concurrent.futures.ProcessPoolExecutor(max_workers=num_jobs) as executor:
-        results = list(
-            executor.map(
-                partial(run_maki_on_compile_command, maki_so_path=plugin_path),
-                split_compile_commands
-            )
-        )
-
-    # Collect results (JSON Arrays) into one large JSON Array
-    # Doing this to avoid duplicates, which there was many of especially for compiler builtins
+    cache = AnalysisCache(args.cache_dir) if args.cache_dir is not None else None
     results_set = set()
-    for result in results:
-        # merge into set
-        for obj in result:
-            obj_tuple = tuple(obj.items())
-            results_set.add(obj_tuple)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=num_jobs) as executor:
+        total = len(split_compile_commands)
+        processed = 0
+
+        # Mapping of CompileCommand to future
+        results = {executor.submit(run_maki_on_compile_command, cc, plugin_path, cache): cc for cc in split_compile_commands}
+                
+        for future in concurrent.futures.as_completed(results):
+            result = future.result()
+            if result:
+                processed += 1
+                print(f"{processed} / {total} completed...")
+                for obj in result:
+                    obj_tuple = tuple(obj.items())
+                    results_set.add(obj_tuple)
+            else:
+                logger.error(f"{results[future].file} failed processing!")
 
     results = [dict(obj) for obj in results_set]
 
