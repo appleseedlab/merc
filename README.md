@@ -40,7 +40,8 @@ python3 run_maki_on_compile_commands.py \
     -c <path to compile_commands.json> \
     -o <path to output maki analysis file, default is analysis.maki> \
     -j <number of threads, default is number of CPUs on system> \
-    -v <verbose>
+    -v <verbose> \
+    --cache-dir <optional, use directory to store intermediate analysis results> 
 ``` 
 
   
