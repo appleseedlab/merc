@@ -88,7 +88,7 @@ def run_maki_on_compile_command(cc: CompileCommand, maki_so_path: str, cache: An
     args = cc.arguments.copy()
 
     args[0] = "clang-17"
-    # pass cpp2c plugin shared library file
+    # pass maki plugin shared library file
     args.insert(1, f'-fplugin={maki_so_path}')
     args.append(cc.file)
     # at the very end, specify that we are only doing syntactic analysis
