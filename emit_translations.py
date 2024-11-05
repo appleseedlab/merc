@@ -13,7 +13,10 @@ from translationconfig import TranslationConfig, IntSize
 logger = logging.getLogger(__name__)
 
 
-def translate_src_files(src_dir: pathlib.Path, out_dir: pathlib.Path, translations: dict[Macro, str | None]) -> None:
+def translate_src_files(src_dir: pathlib.Path,
+                        target_src_dir: pathlib.Path,
+                        out_dir: pathlib.Path,
+                        translations: dict[Macro, str | None]) -> None:
     # dict of src files to their contents in lines
     src_file_contents: dict[str, list[str]] = {}
     for macro, translation in translations.items():
@@ -30,6 +33,10 @@ def translate_src_files(src_dir: pathlib.Path, out_dir: pathlib.Path, translatio
         # only open files in src dir
         if not src_file_path.startswith(str(src_dir)):
             logger.warning(f"Skipping {src_file_path} because it is not in the source directory {src_dir}")
+            continue
+
+        if not target_src_dir.is_relative_to(src_file_path):
+            logger.info(f"Skipping {src_file_path} because it is outside of the target source directory")
             continue
 
         logger.info(f"Translating {src_file_path}")
@@ -90,6 +97,11 @@ def main():
                     help='Output the macro translations to a CSV file.')
     ap.add_argument('--program-name', type=str, required=False,
                     help='Name of the program being translated. Used in the CSV output.')
+    ap.add_argument('--target-src-dir', type=pathlib.Path, required=False,
+                    help='Whitelist directory for translation. Invocations in other directories'
+                         ' are still considered for looking at macro\'s translatability,'
+                         ' but translations will only apply to this directory')
+                        
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -100,6 +112,7 @@ def main():
     input_src_dir = args.input_src_dir.resolve()
     maki_analysis_path = args.maki_analysis_file.resolve()
     output_translation_dir = args.output_translation_dir.resolve()
+    target_src_dir = args.output_translation_dir.resolve() if args.output_translation_dir else input_src_dir
 
     translation_config = TranslationConfig.from_args(args)
 
@@ -110,7 +123,7 @@ def main():
     translator = MacroTranslator(translation_config)
     translations = translator.generate_macro_translations(tlna_src_pd)
 
-    translate_src_files(input_src_dir, output_translation_dir, translations)
+    translate_src_files(input_src_dir, target_src_dir, output_translation_dir, translations)
 
     translator.translation_stats.print_totals()
     if args.output_csv:
