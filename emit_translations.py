@@ -5,6 +5,7 @@ import logging
 import os
 import pathlib
 
+from stat import S_IREAD, S_IRGRP, S_IROTH
 from analyze_transformations import get_tlna_src_preprocessordata
 from macros import Macro
 from macrotranslator import MacroTranslator
@@ -13,7 +14,10 @@ from translationconfig import TranslationConfig, IntSize
 logger = logging.getLogger(__name__)
 
 
-def translate_src_files(src_dir: pathlib.Path, out_dir: pathlib.Path, translations: dict[Macro, str | None]) -> None:
+def translate_src_files(src_dir: pathlib.Path,
+                        out_dir: pathlib.Path,
+                        translations: dict[Macro, str | None],
+                        no_read_only: bool) -> None:
     # dict of src files to their contents in lines
     src_file_contents: dict[str, list[str]] = {}
     for macro, translation in translations.items():
@@ -74,6 +78,9 @@ def translate_src_files(src_dir: pathlib.Path, out_dir: pathlib.Path, translatio
         with open(dst_file_path, 'w') as f:
             f.writelines(src_file_content)
 
+        if not no_read_only:
+            os.chmod(dst_file_path, S_IREAD|S_IRGRP|S_IROTH)
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -90,6 +97,8 @@ def main():
                     help='Output the macro translations to a CSV file.')
     ap.add_argument('--program-name', type=str, required=False,
                     help='Name of the program being translated. Used in the CSV output.')
+    ap.add_argument('--no-read-only', action='store_true',
+                    help="Don't set output translations to read-only.")
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -100,6 +109,7 @@ def main():
     input_src_dir = args.input_src_dir.resolve()
     maki_analysis_path = args.maki_analysis_file.resolve()
     output_translation_dir = args.output_translation_dir.resolve()
+    no_read_only = args.no_read_only
 
     translation_config = TranslationConfig.from_args(args)
 
@@ -110,7 +120,7 @@ def main():
     translator = MacroTranslator(translation_config)
     translations = translator.generate_macro_translations(tlna_src_pd)
 
-    translate_src_files(input_src_dir, output_translation_dir, translations)
+    translate_src_files(input_src_dir, output_translation_dir, translations, no_read_only)
 
     translator.translation_stats.print_totals()
     if args.output_csv:
