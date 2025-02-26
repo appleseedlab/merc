@@ -91,14 +91,14 @@ def main():
                     help='Path to the maki analysis file.')
     ap.add_argument('-o', '--output_translation_dir', type=pathlib.Path, required=True,
                     help='Output directory for translated source files.')
+    ap.add_argument('--no-read-only', action='store_true',
+                    help="Don't set output translations to read-only.")
     ap.add_argument('-v', '--verbose', action='store_true',
                     help='Enable verbose logging')
     ap.add_argument('--output-csv', type=pathlib.Path, required=False,
                     help='Output the macro translations to a CSV file.')
     ap.add_argument('--program-name', type=str, required=False,
                     help='Name of the program being translated. Used in the CSV output.')
-    ap.add_argument('--no-read-only', action='store_true',
-                    help="Don't set output translations to read-only.")
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
