@@ -101,6 +101,10 @@ def main():
                     help='Path to the maki analysis file.')
     ap.add_argument('-o', '--output_translation_dir', type=pathlib.Path, required=True,
                     help='Output directory for translated source files.')
+    ap.add_argument('--target-src-dir', type=pathlib.Path, required=False,
+                    help='Whitelist directory for translation. Invocations in other directories'
+                         ' are still considered for looking at macro\'s translatability,'
+                         ' but translations will only apply to this directory')
     ap.add_argument('--no-read-only', action='store_true',
                     help="Don't set output translations to read-only.")
     ap.add_argument('-v', '--verbose', action='store_true',
@@ -109,10 +113,6 @@ def main():
                     help='Output the macro translations to a CSV file.')
     ap.add_argument('--program-name', type=str, required=False,
                     help='Name of the program being translated. Used in the CSV output.')
-    ap.add_argument('--target-src-dir', type=pathlib.Path, required=False,
-                    help='Whitelist directory for translation. Invocations in other directories'
-                         ' are still considered for looking at macro\'s translatability,'
-                         ' but translations will only apply to this directory')
                         
 
     # Translation args
