@@ -74,10 +74,11 @@ python3 emit_translations.py \
     -i <(required) path to target program source directory> \
     -m <(required) path to maki analysis file> \
     -o <(required) path to output directory for translation> \
+    --no-read-only <(optional) don't set output files to read only> \
     -v <(optional) specify for verbose output> \
-    --int-size <(optional) size of int type on platform> \
     --output-csv <(optional) CSV file to output translation info to> \
-    --program-name <(optional) program name in CSV output>  
+    --program-name <(optional) program name in CSV output> \
+    --int-size <(optional) size of int type on platform>
 ```
 
 For example, running on bc may look like this: 
