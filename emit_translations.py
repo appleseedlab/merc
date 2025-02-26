@@ -91,12 +91,12 @@ def filter_macros_by_directory(pd: PreprocessorData, src_dir: pathlib.Path) -> P
     new_pd.mm = { macro:invocations for macro, invocations in pd.mm.items() if macro.DefinitionLocation.startswith(str(src_dir))}
     return new_pd
 
+
 def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument('-i', '--input_src_dir', type=pathlib.Path, required=True,
-                    help='Path to the program source directory.'
-                         'Does not need to be the program root, but MerC will only output translations for this directory.')
+                    help='Path to the program source directory.')
     ap.add_argument('-m', '--maki_analysis_file', type=pathlib.Path, required=True,
                     help='Path to the maki analysis file.')
     ap.add_argument('-o', '--output_translation_dir', type=pathlib.Path, required=True,
@@ -109,6 +109,11 @@ def main():
                     help='Output the macro translations to a CSV file.')
     ap.add_argument('--program-name', type=str, required=False,
                     help='Name of the program being translated. Used in the CSV output.')
+    ap.add_argument('--target-src-dir', type=pathlib.Path, required=False,
+                    help='Whitelist directory for translation. Invocations in other directories'
+                         ' are still considered for looking at macro\'s translatability,'
+                         ' but translations will only apply to this directory')
+                        
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -120,13 +125,17 @@ def main():
     maki_analysis_path = args.maki_analysis_file.resolve()
     output_translation_dir = args.output_translation_dir.resolve()
     no_read_only = args.no_read_only
+    target_src_dir = args.target_src_dir.resolve() if args.target_src_dir else input_src_dir
+
     translation_config = TranslationConfig.from_args(args)
 
     log_level = logging.INFO if args.verbose else logging.WARNING
     logging.basicConfig(level=log_level)
 
     tlna_src_pd = get_tlna_src_preprocessordata(maki_analysis_path)
-    filtered_tlna_src_pd = filter_macros_by_directory(tlna_src_pd, input_src_dir)
+    
+    filtered_tlna_src_pd = filter_macros_by_directory(tlna_src_pd, target_src_dir)
+
 
     translator = MacroTranslator(translation_config)
     translations = translator.generate_macro_translations(filtered_tlna_src_pd)
