@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 
 import argparse
+import dataclasses
 import logging
 import os
 import pathlib
 
 from stat import S_IREAD, S_IRGRP, S_IROTH
 from analyze_transformations import get_tlna_src_preprocessordata
-from macros import Macro
+from macros import Macro, PreprocessorData
 from macrotranslator import MacroTranslator
 from translationconfig import TranslationConfig, IntSize
 
@@ -82,15 +83,28 @@ def translate_src_files(src_dir: pathlib.Path,
             os.chmod(dst_file_path, S_IREAD|S_IRGRP|S_IROTH)
 
 
+def filter_macros_by_directory(pd: PreprocessorData, src_dir: pathlib.Path) -> PreprocessorData:
+    # Copy old PD
+    new_pd = dataclasses.replace(pd)
+
+    # Filter to only use our src dir
+    new_pd.mm = { macro:invocations for macro, invocations in pd.mm.items() if macro.DefinitionLocation.startswith(str(src_dir))}
+    return new_pd
+
+
 def main():
     ap = argparse.ArgumentParser()
 
     ap.add_argument('-i', '--input_src_dir', type=pathlib.Path, required=True,
-                    help='Path to the program source directory')
+                    help='Path to the program source directory.')
     ap.add_argument('-m', '--maki_analysis_file', type=pathlib.Path, required=True,
                     help='Path to the maki analysis file.')
     ap.add_argument('-o', '--output_translation_dir', type=pathlib.Path, required=True,
                     help='Output directory for translated source files.')
+    ap.add_argument('--target-src-dir', type=pathlib.Path, required=False,
+                    help='Whitelist directory for translation. Invocations in other directories'
+                         ' are still considered for looking at macro\'s translatability,'
+                         ' but translations will only apply to this directory')
     ap.add_argument('--no-read-only', action='store_true',
                     help="Don't set output translations to read-only.")
     ap.add_argument('-v', '--verbose', action='store_true',
@@ -99,6 +113,7 @@ def main():
                     help='Output the macro translations to a CSV file.')
     ap.add_argument('--program-name', type=str, required=False,
                     help='Name of the program being translated. Used in the CSV output.')
+                        
 
     # Translation args
     ap.add_argument('--int-size', type=int, choices=[size.value for size in IntSize], default=IntSize.Int32,
@@ -110,6 +125,7 @@ def main():
     maki_analysis_path = args.maki_analysis_file.resolve()
     output_translation_dir = args.output_translation_dir.resolve()
     no_read_only = args.no_read_only
+    target_src_dir = args.target_src_dir.resolve() if args.target_src_dir else input_src_dir
 
     translation_config = TranslationConfig.from_args(args)
 
@@ -117,8 +133,12 @@ def main():
     logging.basicConfig(level=log_level)
 
     tlna_src_pd = get_tlna_src_preprocessordata(maki_analysis_path)
+    
+    filtered_tlna_src_pd = filter_macros_by_directory(tlna_src_pd, target_src_dir)
+
+
     translator = MacroTranslator(translation_config)
-    translations = translator.generate_macro_translations(tlna_src_pd)
+    translations = translator.generate_macro_translations(filtered_tlna_src_pd)
 
     translate_src_files(input_src_dir, output_translation_dir, translations, no_read_only)
 

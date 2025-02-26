@@ -74,6 +74,7 @@ python3 emit_translations.py \
     -i <(required) path to target program source directory> \
     -m <(required) path to maki analysis file> \
     -o <(required) path to output directory for translation> \
+    --target-src-dir <(optional) whitelist program source subdirectory for translations, translations will only output for this directory>
     --no-read-only <(optional) don't set output files to read only> \
     -v <(optional) specify for verbose output> \
     --output-csv <(optional) CSV file to output translation info to> \
