@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def translate_src_files(src_dir: pathlib.Path,
                         out_dir: pathlib.Path,
                         translations: dict[Macro, str | None],
-                        no_read_only: bool) -> None:
+                        read_only: bool) -> None:
     # dict of src files to their contents in lines
     src_file_contents: dict[str, list[str]] = {}
     for macro, translation in translations.items():
@@ -78,7 +78,7 @@ def translate_src_files(src_dir: pathlib.Path,
         with open(dst_file_path, 'w') as f:
             f.writelines(src_file_content)
 
-        if not no_read_only:
+        if read_only:
             os.chmod(dst_file_path, S_IREAD|S_IRGRP|S_IROTH)
 
 
@@ -91,8 +91,8 @@ def main():
                     help='Path to the maki analysis file.')
     ap.add_argument('-o', '--output_translation_dir', type=pathlib.Path, required=True,
                     help='Output directory for translated source files.')
-    ap.add_argument('--no-read-only', action='store_true',
-                    help="Don't set output translations to read-only.")
+    ap.add_argument('--read-only', action=argparse.BooleanOptionalAction, default=True,
+                    help="Set or don't set output translations to read-only. On by default.")
     ap.add_argument('-v', '--verbose', action='store_true',
                     help='Enable verbose logging')
     ap.add_argument('--output-csv', type=pathlib.Path, required=False,
@@ -109,7 +109,7 @@ def main():
     input_src_dir = args.input_src_dir.resolve()
     maki_analysis_path = args.maki_analysis_file.resolve()
     output_translation_dir = args.output_translation_dir.resolve()
-    no_read_only = args.no_read_only
+    read_only = args.read_only
 
     translation_config = TranslationConfig.from_args(args)
 
@@ -120,7 +120,7 @@ def main():
     translator = MacroTranslator(translation_config)
     translations = translator.generate_macro_translations(tlna_src_pd)
 
-    translate_src_files(input_src_dir, output_translation_dir, translations, no_read_only)
+    translate_src_files(input_src_dir, output_translation_dir, translations, read_only) 
 
     translator.translation_stats.print_totals()
     if args.output_csv:
