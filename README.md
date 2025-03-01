@@ -74,7 +74,7 @@ python3 emit_translations.py \
     -i <(required) path to target program source directory> \
     -m <(required) path to maki analysis file> \
     -o <(required) path to output directory for translation> \
-    --no-read-only <(optional) don't set output files to read only> \
+    [--read-only, --no-read-only] <(optional) set or don't set output translations to read only. Read-only is the default.> \
     -v <(optional) specify for verbose output> \
     --output-csv <(optional) CSV file to output translation info to> \
     --program-name <(optional) program name in CSV output> \
